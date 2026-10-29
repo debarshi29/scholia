@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Env / secrets
+.env
+
+# Runtime data (sqlite db, logs, cached repos)
+data/
+
+# Generated corpus (keep the seed set)
+problems/*
+!problems/_seed/
+
+# Web
+web/node_modules/
+web/dist/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
