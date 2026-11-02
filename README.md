@@ -10,7 +10,7 @@ See [`CLAUDE.md`](CLAUDE.md) for the full spec, invariants and milestones.
 
 | Milestone | State |
 |---|---|
-| M0: skeleton, schema, config, DB, tooling | in progress |
+| M0: skeleton, schema, config, DB, tooling | done |
 | M1: Tier 0 corpus importer | not started |
 | M2: Session API + Library/Session pages | not started |
 | M3: Assistant proxy + backends | not started |
@@ -32,4 +32,7 @@ ollama pull qwen2.5-coder:3b
 uv run ruff check . && uv run ruff format --check .
 uv run mypy schema api/grader
 uv run pytest -q
+```
+
+
 ```
