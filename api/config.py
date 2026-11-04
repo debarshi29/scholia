@@ -39,7 +39,7 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
-        return f"sqlite:///{self.db_path.as_posix()}"
+        return f"sqlite+aiosqlite:///{self.db_path.as_posix()}"
 
 
 @lru_cache(maxsize=1)

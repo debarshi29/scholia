@@ -4,12 +4,15 @@ Problems are immutable once published (invariant 8), so ``problems`` is keyed by
 ``(id, version)`` and sessions reference that pair.
 """
 
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Column, Engine, ForeignKeyConstraint, UniqueConstraint, event
-from sqlmodel import Field, Session, SQLModel, create_engine
+from fastapi import Request
+from sqlalchemy import JSON, Column, ForeignKeyConstraint, UniqueConstraint, event
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlmodel import Field, SQLModel
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from schema import AssistantMode, BugCategory, ClaimVerdict, OutcomeStatus, Source
 
@@ -125,16 +128,25 @@ def _enable_sqlite_fks(dbapi_conn: Any, _record: Any) -> None:
     cursor.close()
 
 
-def make_engine(url: str) -> Engine:
-    engine = create_engine(url, connect_args={"check_same_thread": False})
-    event.listen(engine, "connect", _enable_sqlite_fks)
+def make_engine(url: str) -> AsyncEngine:
+    """Async engine over aiosqlite. ``url`` must use the ``sqlite+aiosqlite://`` scheme."""
+    engine = create_async_engine(url)
+    event.listen(engine.sync_engine, "connect", _enable_sqlite_fks)
     return engine
 
 
-def init_db(engine: Engine) -> None:
-    SQLModel.metadata.create_all(engine)
+async def init_db(engine: AsyncEngine) -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
 
 
-def session_scope(engine: Engine) -> Iterator[Session]:
-    with Session(engine) as session:
+async def session_scope(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
+    """Yield a session that keeps loaded attributes after commit (no lazy reloads under async)."""
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        yield session
+
+
+async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
+    """FastAPI dependency: one session per request, on the engine created at startup."""
+    async for session in session_scope(request.app.state.engine):
         yield session

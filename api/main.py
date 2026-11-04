@@ -36,10 +36,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
     engine = make_engine(settings.db_url)
-    init_db(engine)
+    await init_db(engine)
     app.state.engine = engine
     yield
-    engine.dispose()
+    await engine.dispose()
 
 
 def create_app() -> FastAPI:
