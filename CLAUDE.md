@@ -38,7 +38,7 @@ If a task seems to need any of these, stop and ask.
 | Layer | Choice |
 |---|---|
 | Backend | Python 3.12, FastAPI, Uvicorn, Pydantic v2, pydantic-settings |
-| DB | SQLite via SQLModel (one file: `data/scholia.db`) |
+| DB | SQLite via SQLModel (one file: `data/scholia.db`), async through SQLAlchemy's asyncio extension + `aiosqlite` |
 | Local model | Ollama, model `qwen2.5-coder:3b` (7B is the ceiling for 6 GB VRAM), reached through its OpenAI-compatible endpoint `http://localhost:11434/v1` |
 | Cloud model | Gemini via the `google-genai` SDK. The model name comes only from config. |
 | LLM client | Thin internal adapter (`api/backends/`) over the OpenAI-compatible API. Do not add LiteLLM unless asked. |
@@ -47,7 +47,7 @@ If a task seems to need any of these, stop and ask.
 | Datasets | Hugging Face `datasets` (SWE-bench Lite), git clone of the BugsInPy repo |
 | Git ops | GitPython |
 | Frontend | React + Vite + TypeScript, Tailwind CSS, `@monaco-editor/react`, TanStack Query, Zustand |
-| Tooling | uv (Python), pnpm (web), ruff (lint and format), pytest, mypy (strict on `schema/` and `api/grader/`) |
+| Tooling | uv (Python), pnpm (web), ruff (lint and format), pytest (async tests via the anyio plugin), `httpx` (API tests through `ASGITransport`), mypy (strict on `schema/` and `api/grader/`) |
 
 Pin versions in `uv.lock` and `pnpm-lock.yaml`. **Ask before adding any dependency** that is not in this table.
 
@@ -66,6 +66,8 @@ scholia/
     answer.py               # AnswerKey, Bug, DesignNote
     report.py               # Report, Finding
     problem.py              # ProblemMeta
+    session.py              # AssistantMode
+    grading.py              # OutcomeStatus, ClaimVerdict
   corpus/
     sources/
       swebench.py           # Tier 0
@@ -77,7 +79,8 @@ scholia/
   api/
     main.py                 # FastAPI app, routers
     config.py               # pydantic-settings
-    db.py                   # SQLModel engine + tables
+    db.py                   # SQLModel async engine + tables + get_db dependency
+    log.py                  # JSON log formatter
     sessions.py             # picker, server-side clock, report intake
     proxy.py                # assistant proxy (ALL constraints enforced here)
     tokens.py               # token counting
@@ -270,7 +273,7 @@ PROBLEMS_DIR=problems
 
 ## 10. Conventions
 
-- **Python:** full type hints, Pydantic models at every boundary, no bare `except`, structured logging (`logging` with JSON formatter), and async for all I/O in `api/`.
+- **Python:** full type hints, Pydantic models at every boundary, no bare `except`, structured logging (`logging` with JSON formatter), and async for all I/O in `api/`. The DB is async too: use `AsyncSession` from `api.db.get_db` and eager-load relationships (lazy loads fail under async).
 - **Errors:** API errors return `{"error": {"code", "message"}}` with proper status codes. Refusals from the proxy are 200 responses with `refused: true` and a `reason`, because they are part of the session, not failures.
 - **Tests:** at least one test per invariant in section 5. For the grader, tests in `tests/fixtures/graded/` hold hand-graded reports with expected outcomes. LLM calls are mocked in unit tests, and real-call tests are marked `@pytest.mark.live` and skipped by default.
 - **Commits:** small and per-feature, with conventional prefixes (`feat:`, `fix:`, `test:`, `chore:`). Do not commit `.env`, `data/` or generated `problems/`.
