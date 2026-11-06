@@ -159,11 +159,12 @@ Before calling a task done, run `ruff`, `mypy` and `pytest` (plus web `typecheck
 ## 6. Data contracts
 
 ### Problem folder
+Each published version has its own immutable directory (invariant 8), so older sessions can still be debriefed against the version they used.
 ```
-problems/P-0001/
-  src/            # served files, sanitised
+problems/P-0001/v1/
+  src/            # served files, sanitised (repo-relative paths kept)
   answer.json     # hidden until submit
-  meta.json       # tier, source, origin repo, commit, licence, line_count, file_count
+  meta.json       # tier, source, upstream_id, origin repo, commit, licence, line_count, file_count
   tests/          # verifying tests, never served
 ```
 

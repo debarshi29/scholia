@@ -69,3 +69,11 @@ def test_noop_when_nothing_to_remove() -> None:
 def test_invalid_python_raises() -> None:
     with pytest.raises(SanitiseError):
         sanitise("print 'py2'\n", bug_ranges=[])
+
+
+def test_form_feed_does_not_shift_lines() -> None:
+    # str.splitlines() would treat \x0c as a line break; git and the editor do not.
+    src = "a = 1\n\x0c\nb = 2  # see #1234\n"
+    out = sanitise(src, bug_ranges=[])
+    assert out.text == "a = 1\n\x0c\nb = 2\n"
+    assert out.removals[0].line == 3

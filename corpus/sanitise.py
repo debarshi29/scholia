@@ -18,6 +18,8 @@ import warnings
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from corpus.text import line_count, split_lines_keepends
+
 HINT_WINDOW = 3
 """Lines around a bug range in which hint comments are removed."""
 
@@ -86,7 +88,7 @@ def sanitise(source: str, bug_ranges: list[tuple[int, int]]) -> SanitiseResult:
     except (SyntaxError, tokenize.TokenError) as exc:
         raise SanitiseError(f"cannot tokenize source: {exc}") from exc
 
-    lines = source.splitlines(keepends=True)
+    lines = split_lines_keepends(source)
     removals: list[Removal] = []
     for tok in tokens:
         if tok.type != tokenize.COMMENT:
@@ -103,7 +105,7 @@ def sanitise(source: str, bug_ranges: list[tuple[int, int]]) -> SanitiseResult:
         removals.append(Removal(line=row, reason=reason, text=tok.string))
 
     out = "".join(lines)
-    if len(out.splitlines()) != len(source.splitlines()):
+    if line_count(out) != line_count(source):
         raise SanitiseError("line count changed")
     if ast.dump(_parse(out)) != before:
         raise SanitiseError("AST changed")

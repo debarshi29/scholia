@@ -4,6 +4,8 @@ import re
 from enum import StrEnum
 from pathlib import PurePosixPath
 
+from corpus.text import line_count
+
 MIN_LINES = 150
 MAX_LINES = 500
 MAX_FILES = 2
@@ -54,10 +56,6 @@ def check_file_set(paths: list[str]) -> DropReason | None:
     if any(not p.endswith(".py") for p in paths):
         return DropReason.NON_PYTHON
     return None
-
-
-def line_count(text: str) -> int:
-    return len(text.splitlines())
 
 
 def check_line_counts(texts: list[str]) -> DropReason | None:
