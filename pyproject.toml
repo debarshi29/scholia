@@ -9,10 +9,12 @@ dependencies = [
     "datasets>=3.1",
     "fastapi>=0.115",
     "gitpython>=3.1.43",
+    "google-genai>=1.0",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
     "sqlalchemy[asyncio]>=2.0.36",
     "sqlmodel>=0.0.22",
+    "tenacity>=9.0",
     "uvicorn[standard]>=0.32",
 ]
 
@@ -52,3 +54,7 @@ strict = true
 testpaths = ["tests"]
 addopts = "-m 'not live'"
 markers = ["live: makes real LLM/network calls; skipped by default"]
+
+[[tool.mypy.overrides]]
+module = ["datasets.*"]
+ignore_missing_imports = true

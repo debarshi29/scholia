@@ -122,6 +122,7 @@ cd web && pnpm dev               # http://localhost:5173, proxies /api to :8000
 # corpus
 uv run python -m corpus.build --tier 0 --source swebench --limit 20
 uv run python -m corpus.build --tier 0 --source bugsinpy --limit 20
+uv run python -m corpus.build --tier 0 --source swebench --limit 20 --dry-run   # checks only, no Gemini
 
 # quality
 uv run ruff check . && uv run ruff format --check .
@@ -210,10 +211,13 @@ Tier 0 conversions usually have a single bug. `category` is assigned by a Gemini
 ## 7. Component specs
 
 ### Corpus Tier 0 (`corpus/sources/`)
-- **SWE-bench Lite:** load it from Hugging Face. For each instance, check out `repo@base_commit` (shallow clone, cached under `data/repos/`). Take the **source file(s) the gold `patch` touches**, excluding test files. Keep the instance only if it touches 1-2 source files and each file is 150-500 lines after cropping is considered. `lines` in the answer key come from the patch hunks, mapped to buggy-version line numbers.
+- **SWE-bench Lite:** load it from Hugging Face. For each instance, check out `repo@base_commit` (shallow clone, cached under `data/repos/`). Take the **source file(s) the gold `patch` touches**, excluding test files. Keep the instance only if it touches 1-2 source files and each file is 150-500 lines. v1 does no cropping (78 of 300 SWE-bench Lite instances fit as-is). `lines` in the answer key come from the patch hunks, mapped to buggy-version line numbers.
 - **BugsInPy:** same idea, using each bug's patch against the buggy commit.
 - Check each dataset's actual field names and licence when you implement it. Do not assume them from this file.
 - **Sanitise** (`sanitise.py`): remove comments that mention the fix, TODO/FIXME/XXX on the bug's lines, and issue numbers. Never alter code semantics, and keep line numbers stable. Replace a removed comment line with an empty line rather than deleting it.
+- `--limit N` is the number of problems to **publish**; candidates are scanned in dataset order until N are kept. `--dry-run` runs every deterministic check and publishes nothing.
+- Patch hunk headers can be off from `base_commit` (git tolerates offsets), so changed lines are located by hunk content, not by header numbers. Lines end at `
+` only (`str.splitlines()` also splits on form feeds).
 - Every build run writes a summary (candidates, kept, dropped by reason) to `data/logs/`.
 
 ### Session API (`api/sessions.py`)
