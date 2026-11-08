@@ -231,11 +231,15 @@ def run(
     return published
 
 
-def source_for(name: str) -> CandidateSource:
+def source_for(name: str, data_dir: Path) -> CandidateSource:
     if name == Source.SWEBENCH:
         from corpus.sources.swebench import SWEBenchLite
 
         return SWEBenchLite()
+    if name == Source.BUGSINPY:
+        from corpus.sources.bugsinpy import BugsInPy
+
+        return BugsInPy(data_dir / "repos" / "_datasets" / "BugsInPy")
     raise SystemExit(f"unknown source: {name}")
 
 
@@ -284,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
         prompt_version=classifier.prompt_version if classifier else None,
     )
     published = run(
-        source_for(args.source).candidates(),
+        source_for(args.source, data_dir).candidates(),
         build_log=build_log,
         problems_dir=settings.problems_dir,
         repos=repos,
