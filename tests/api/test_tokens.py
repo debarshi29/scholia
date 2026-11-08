@@ -1,6 +1,7 @@
 import pytest
 
-from api.tokens import ChatMessage, HFTokenCounter, count_messages, render_chatml
+from api.backends.base import ChatMessage
+from api.tokens import HFTokenCounter, count_messages, render_chatml
 
 
 class CharCounter:
