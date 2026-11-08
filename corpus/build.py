@@ -18,7 +18,7 @@ import sys
 import urllib.error
 from collections import Counter
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -114,6 +114,10 @@ def prepare(
         raise Dropped(DropReason.PATCH_ADDS_FILE)
     if reason := check_file_set([fp.path for fp in patches]):
         raise Dropped(reason, ", ".join(fp.path for fp in patches))
+    try:
+        cand = replace(cand, commit=repos.resolve(cand.repo, cand.commit))
+    except CheckoutError as exc:
+        raise Dropped(DropReason.CHECKOUT_FAILED, str(exc)) from exc
 
     try:
         licence = licences.resolve(cand.repo, cand.commit)
@@ -227,11 +231,15 @@ def run(
     return published
 
 
-def source_for(name: str) -> CandidateSource:
+def source_for(name: str, data_dir: Path) -> CandidateSource:
     if name == Source.SWEBENCH:
         from corpus.sources.swebench import SWEBenchLite
 
         return SWEBenchLite()
+    if name == Source.BUGSINPY:
+        from corpus.sources.bugsinpy import BugsInPy
+
+        return BugsInPy(data_dir / "repos" / "_datasets" / "BugsInPy")
     raise SystemExit(f"unknown source: {name}")
 
 
@@ -280,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
         prompt_version=classifier.prompt_version if classifier else None,
     )
     published = run(
-        source_for(args.source).candidates(),
+        source_for(args.source, data_dir).candidates(),
         build_log=build_log,
         problems_dir=settings.problems_dir,
         repos=repos,

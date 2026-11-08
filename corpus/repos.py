@@ -6,6 +6,7 @@ the files actually read are downloaded. Nothing is checked out into a working tr
 
 import json
 import logging
+import re
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -15,6 +16,8 @@ from git import GitCommandError, Repo
 from corpus.filters import detect_licence_from_text
 
 log = logging.getLogger(__name__)
+
+_FULL_SHA = re.compile(r"[0-9a-f]{40}")
 
 _LICENCE_FILES = ("LICENSE", "LICENSE.txt", "LICENSE.rst", "LICENSE.md", "COPYING", "LICENCE")
 
@@ -40,6 +43,31 @@ class RepoCache:
             cfg.set_value('remote "origin"', "promisor", "true")
             cfg.set_value('remote "origin"', "partialclonefilter", "blob:none")
         return repo
+
+    def resolve(self, slug: str, ref: str) -> str:
+        """Full 40-char sha for ``ref``. Abbreviated shas (common in BugsInPy) cannot be
+        fetched directly, so they are resolved in a separate treeless clone of the history
+        (``--filter=tree:0``: commits only, no trees or blobs), kept apart from the shallow
+        object store used for reading files.
+        """
+        if _FULL_SHA.fullmatch(ref):
+            return ref
+        path = self.root / (slug.replace("/", "__") + "__history")
+        if (path / "HEAD").exists():
+            repo = Repo(path)
+        else:
+            repo = Repo.init(path, bare=True)
+            repo.create_remote("origin", f"https://github.com/{slug}.git")
+        try:
+            return str(repo.git.rev_parse("--verify", f"{ref}^{{commit}}"))
+        except GitCommandError:
+            pass
+        log.info("fetching history to resolve short sha", extra={"repo": slug, "ref": ref})
+        try:
+            repo.git.fetch("--filter=tree:0", "origin", "+refs/heads/*:refs/heads/*")
+            return str(repo.git.rev_parse("--verify", f"{ref}^{{commit}}"))
+        except GitCommandError as exc:
+            raise CheckoutError(f"cannot resolve {slug}@{ref}: {exc.stderr}") from exc
 
     def _ensure_commit(self, slug: str, commit: str) -> Repo:
         repo = self._repo(slug)
