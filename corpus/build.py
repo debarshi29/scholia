@@ -18,7 +18,7 @@ import sys
 import urllib.error
 from collections import Counter
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -114,6 +114,10 @@ def prepare(
         raise Dropped(DropReason.PATCH_ADDS_FILE)
     if reason := check_file_set([fp.path for fp in patches]):
         raise Dropped(reason, ", ".join(fp.path for fp in patches))
+    try:
+        cand = replace(cand, commit=repos.resolve(cand.repo, cand.commit))
+    except CheckoutError as exc:
+        raise Dropped(DropReason.CHECKOUT_FAILED, str(exc)) from exc
 
     try:
         licence = licences.resolve(cand.repo, cand.commit)

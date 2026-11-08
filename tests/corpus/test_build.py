@@ -44,6 +44,9 @@ class FakeRepos:
     def __init__(self, files: dict[str, str]) -> None:
         self.files = files
 
+    def resolve(self, slug: str, ref: str) -> str:
+        return ref if len(ref) == 40 else ref.ljust(40, "0")
+
     def read_text(self, slug: str, commit: str, path: str) -> str:
         if path not in self.files:
             raise CheckoutError(path)
@@ -134,6 +137,14 @@ def test_publishes_sanitised_problem_with_answer_key(tmp_path: Path) -> None:
     [seen] = classifier.seen
     assert "   50  v50 = 50" in seen.buggy_context
     assert "pkg/tests" not in seen.fix_diff
+
+
+def test_short_commit_is_resolved_before_publish(tmp_path: Path) -> None:
+    cand = _cand("short-sha")
+    cand = Candidate(**{**cand.__dict__, "commit": "abc1234"})
+    _run(tmp_path, [cand])
+    meta = json.loads((tmp_path / "problems" / "P-0001" / "v1" / "meta.json").read_text())
+    assert meta["commit"] == "abc1234".ljust(40, "0")
 
 
 def test_every_candidate_is_accounted_for(tmp_path: Path) -> None:
