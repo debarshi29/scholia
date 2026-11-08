@@ -11,7 +11,7 @@ See [`CLAUDE.md`](CLAUDE.md) for the full spec, invariants and milestones.
 | Milestone | State |
 |---|---|
 | M0: skeleton, schema, config, DB, tooling | done |
-| M1: Tier 0 corpus importer | not started |
+| M1: Tier 0 corpus importer | built; real publish needs a Gemini key |
 | M2: Session API + Library/Session pages | not started |
 | M3: Assistant proxy + backends | not started |
 | M4: Grader + tracker + Debrief | not started |
@@ -25,6 +25,16 @@ uv sync                    # installs deps into .venv
 cp .env.example .env       # then add GEMINI_API_KEY
 ollama pull qwen2.5-coder:3b
 ```
+
+## Build the corpus
+
+```bash
+uv run python -m corpus.build --tier 0 --source swebench --limit 20 --dry-run  # checks only
+uv run python -m corpus.build --tier 0 --source swebench --limit 20            # needs GEMINI_API_KEY + JUDGE_MODEL
+uv run python -m corpus.build --tier 0 --source bugsinpy --limit 20
+```
+
+Each run writes a build log to `data/logs/`.
 
 ## Quality checks
 
