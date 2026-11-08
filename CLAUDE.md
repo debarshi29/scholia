@@ -81,6 +81,8 @@ scholia/
     config.py               # pydantic-settings
     db.py                   # SQLModel async engine + tables + get_db dependency
     log.py                  # JSON log formatter
+    problems.py             # read-only access to src/ + meta.json (never answer.json/tests)
+    deps.py                 # FastAPI dependencies (lazy proxy construction)
     sessions.py             # picker, server-side clock, report intake
     proxy.py                # assistant proxy (ALL constraints enforced here)
     tokens.py               # token counting
@@ -233,6 +235,10 @@ Tier 0 conversions usually have a single bug. `category` is assigned by a Gemini
 - It enforces invariants 2-4 and 6.
 - Realistic mode sends the whole file the selection is in (or the whole problem if nothing is selected) to Gemini. It has no budget but is still logged.
 - The token overhead is the system prompt plus the template tokens, computed once at startup.
+- The cap check counts the **fully rendered ChatML prompt** (system + template + numbered selected lines + question) with the real tokenizer, so the question counts too: pasting code into the question cannot bypass the cap. Questions are also limited to `MAX_QUESTION_CHARS`.
+- Constrained prompts contain only the numbered selected lines and the question: no file path. Each question is standalone (no thread history is sent).
+- Refusal reasons: `no_selection`, `invalid_selection`, `question_too_long`, `over_ctx_cap`, `budget_exhausted`, `licence_not_allowed` (Realistic), `backend_error`. A backend failure is logged as a `backend_error` refusal and costs no budget.
+- Ollama's OpenAI-compatible endpoint cannot set `num_ctx`: keep `ctx_cap` at or below the context Ollama is configured with.
 
 ### Grader (`api/grader/`)
 1. **match.py:** a finding matches a bug when the file is equal and the line ranges overlap after widening the bug by ±3 lines. Assignment is one-to-one, greedy by overlap size. Unmatched bugs get `missed` and unmatched findings get `extra`. Pure functions, fully unit-tested.
