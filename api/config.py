@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     default_ctx_cap: int = Field(default=3072, gt=0)
     default_q_budget: int = Field(default=12, ge=0)
     session_minutes: int = Field(default=60, gt=0)
+    max_reply_tokens: int = Field(default=512, gt=0)
+    """Upper bound on an assistant reply, both modes."""
+    max_question_chars: int = Field(default=1000, gt=0)
+    """Longest question accepted; stops pasting code into the question to dodge the cap."""
 
     # Grader
     match_tolerance_lines: int = Field(default=3, ge=0)
