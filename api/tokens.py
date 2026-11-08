@@ -7,12 +7,7 @@ counts in Realistic mode reuse the same counter and are approximate.
 
 from typing import Protocol
 
-from pydantic import BaseModel
-
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str
+from api.backends.base import ChatMessage
 
 
 class TokenCounter(Protocol):
