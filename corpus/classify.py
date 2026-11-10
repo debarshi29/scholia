@@ -21,6 +21,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from api.jsonout import parse_model_json
 from schema import BugCategory
 
 log = logging.getLogger(__name__)
@@ -109,7 +110,7 @@ class GeminiClassifier:
         for _attempt in range(2):  # one retry on malformed output, then give up
             raw = self._call(prompt)
             try:
-                return Classification.model_validate_json(raw)
+                return parse_model_json(raw, Classification)
             except ValidationError as exc:
                 log.warning("classifier output invalid", extra={"raw": raw[:500]})
                 last = exc

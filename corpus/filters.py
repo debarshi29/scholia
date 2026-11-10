@@ -26,6 +26,7 @@ class DropReason(StrEnum):
     LICENCE_UNKNOWN = "licence_unknown"
     PATCH_UNPARSEABLE = "patch_unparseable"
     PATCH_ADDS_FILE = "patch_adds_file"
+    FIX_NOT_LOCALISED = "fix_not_localised"
     SOURCE_UNPARSEABLE = "source_unparseable"
     CHECKOUT_FAILED = "checkout_failed"
     CLASSIFY_FAILED = "classify_failed"

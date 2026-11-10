@@ -55,7 +55,7 @@ diff --git a/m.py b/m.py
 --- a/m.py
 +++ b/m.py
 @@ -0,0 +1,1 @@
-+import os
++DEBUG = True
 """
     [fp] = parse_patch(patch)
     assert fp.locate(SOURCE) == [1]
@@ -145,3 +145,52 @@ def test_garbage_raises() -> None:
 )
 def test_cluster(points: list[int], regions: list[tuple[int, int]]) -> None:
     assert cluster(points, gap=10) == regions
+
+
+@pytest.mark.parametrize(
+    "added",
+    ["import os", "from a.b import c, d", "from . import x  # noqa", "import numpy as np", ""],
+)
+def test_import_only_insertions_are_not_bug_locations(added: str) -> None:
+    patch = f"""diff --git a/m.py b/m.py
+--- a/m.py
++++ b/m.py
+@@ -3,2 +3,3 @@
+ line3
++{added}
+ line4
+@@ -30,3 +31,3 @@
+ line30
+-line31
++LINE31
+ line32
+"""
+    [fp] = parse_patch(patch)
+    assert fp.locate(SOURCE) == [31]
+
+
+def test_import_edit_is_skipped_but_code_in_same_group_is_not() -> None:
+    patch = """diff --git a/m.py b/m.py
+--- a/m.py
++++ b/m.py
+@@ -3,2 +3,4 @@
+ line3
++import os
++line3b = os.sep
+ line4
+"""
+    [fp] = parse_patch(patch)
+    assert fp.locate(SOURCE) == [3]
+
+
+def test_patch_with_only_import_changes_has_no_regions() -> None:
+    patch = """diff --git a/m.py b/m.py
+--- a/m.py
++++ b/m.py
+@@ -3,2 +3,3 @@
+ line3
++from x import y
+ line4
+"""
+    [fp] = parse_patch(patch)
+    assert fp.changed_regions(SOURCE) == []

@@ -14,6 +14,7 @@ CLUSTER_GAP = 10
 """Changed lines further apart than this become separate bug regions."""
 
 _DIFF_GIT = re.compile(r"^diff --git a/(?P<a>\S+) b/(?P<b>\S+)$")
+_IMPORT = re.compile(r"^\s*(?:import\s+[\w.]+|from\s+[\w.]+\s+import\s+[\w.*]+)[\w\s.,*]*(?:#.*)?$")
 _HUNK = re.compile(r"^@@ -(?P<os>\d+)(?:,(?P<oc>\d+))? \+(?P<ns>\d+)(?:,(?P<nc>\d+))? @@")
 
 
@@ -27,10 +28,28 @@ class Hunk:
     """1-indexed start of the old side as stated in the header."""
     old_lines: list[str] = field(default_factory=list)
     """Old-side content: context plus removed lines, in order."""
+    groups: list["ChangeGroup"] = field(default_factory=list)
+    """Maximal runs of ``-``/``+`` lines, in order."""
+
+
+@dataclass
+class ChangeGroup:
+    anchor: int
+    """Index into ``old_lines`` of the line just before the group (-1 = before the first)."""
     removed: list[int] = field(default_factory=list)
-    """Indexes into ``old_lines`` that the patch deletes or replaces."""
-    insert_after: list[int] = field(default_factory=list)
-    """Indexes into ``old_lines`` after which pure insertions happen (-1 = before the first)."""
+    """Indexes into ``old_lines`` that the group deletes or replaces."""
+    texts: list[str] = field(default_factory=list)
+    """Every removed and added line of the group, without the ``-``/``+`` tag."""
+
+    @property
+    def import_only(self) -> bool:
+        """Only adds, drops or edits single-line imports: never where the defect is."""
+        return all(not t.strip() or _IMPORT.match(t) for t in self.texts)
+
+    @property
+    def points(self) -> list[int]:
+        """Old-line indexes a reader would have to look at: removed lines, or the anchor."""
+        return self.removed or [self.anchor]
 
 
 @dataclass
@@ -48,13 +67,15 @@ class FilePatch:
 
         A pure insertion is anchored to the line before it (or line 1 at the top),
         since that is where a reader would have to notice something is missing.
+        Import-only changes are skipped: they support the fix but are not the defect.
         """
         src = split_lines(source)
         points: list[int] = []
         for h in self.hunks:
             base = _find(src, h)
-            points.extend(base + i + 1 for i in h.removed)
-            points.extend(max(base + i + 1, 1) for i in h.insert_after)
+            for group in h.groups:
+                if not group.import_only:
+                    points.extend(max(base + i + 1, 1) for i in group.points)
         return sorted(set(points))
 
     def changed_regions(self, source: str, gap: int = CLUSTER_GAP) -> list[tuple[int, int]]:
@@ -117,7 +138,7 @@ def _parse_hunks(fp: FilePatch, lines: list[str]) -> None:
         new_left = int(m["nc"]) if m["nc"] is not None else 1
         # With an empty old side, git states the line *before* the insertion.
         h = Hunk(old_start=int(m["os"]) + (1 if old_left == 0 else 0))
-        last_was_removal = False
+        group: ChangeGroup | None = None
         i += 1
         while i < len(lines) and (old_left > 0 or new_left > 0):
             body = lines[i]
@@ -126,22 +147,23 @@ def _parse_hunks(fp: FilePatch, lines: list[str]) -> None:
                 h.old_lines.append(body[1:])
                 old_left -= 1
                 new_left -= 1
-                last_was_removal = False
-            elif tag == "-":
-                h.removed.append(len(h.old_lines))
-                h.old_lines.append(body[1:])
-                old_left -= 1
-                last_was_removal = True
-            elif tag == "+":
-                if not last_was_removal:
-                    h.insert_after.append(len(h.old_lines) - 1)
-                new_left -= 1
+                group = None
+            elif tag in "-+":
+                if group is None:
+                    group = ChangeGroup(anchor=len(h.old_lines) - 1)
+                    h.groups.append(group)
+                group.texts.append(body[1:])
+                if tag == "-":
+                    group.removed.append(len(h.old_lines))
+                    h.old_lines.append(body[1:])
+                    old_left -= 1
+                else:
+                    new_left -= 1
             elif tag != "\\":  # "\ No newline at end of file" is ignored
                 raise PatchError(f"{fp.path}: unexpected hunk line {body!r}")
             i += 1
         if old_left != 0 or new_left != 0:
             raise PatchError(f"{fp.path}: truncated hunk")
-        h.insert_after = sorted(set(h.insert_after))
         fp.hunks.append(h)
     if not fp.hunks and not (fp.is_new or fp.is_deleted):
         raise PatchError(f"{fp.path}: no hunks")

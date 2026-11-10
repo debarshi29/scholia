@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "aiosqlite>=0.20",
-    "datasets>=3.1",
     "fastapi>=0.115",
     "gitpython>=3.1.43",
     "google-genai>=1.0",
@@ -55,7 +54,3 @@ strict = true
 testpaths = ["tests"]
 addopts = "-m 'not live'"
 markers = ["live: makes real LLM/network calls; skipped by default"]
-
-[[tool.mypy.overrides]]
-module = ["datasets.*"]
-ignore_missing_imports = true
