@@ -10,7 +10,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlmodel import col, select
@@ -26,8 +26,9 @@ from api.db import (
     as_utc,
     get_db,
 )
-from api.deps import get_proxy, get_store
+from api.deps import get_grader, get_proxy, get_store
 from api.errors import ApiError
+from api.grader.run import Grader
 from api.problems import ProblemFileError, ProblemStore
 from api.proxy import (
     AskRequest,
@@ -182,7 +183,7 @@ class SubmitResult(BaseModel):
 # ---------- helpers ----------
 
 
-def _summary(s: SessionRow) -> SessionSummary:
+def summary(s: SessionRow) -> SessionSummary:
     return SessionSummary(
         id=s.id,
         problem_id=s.problem_id,
@@ -337,7 +338,7 @@ async def _view(
     total = settings.session_minutes * 60
     end = as_utc(session.submitted_at) if session.submitted_at else now()
     return SessionView(
-        **_summary(session).model_dump(),
+        **summary(session).model_dump(),
         ctx_cap=session.ctx_cap,
         q_budget=session.q_budget,
         session_seconds=total,
@@ -351,7 +352,7 @@ async def _view(
 @router.get("/sessions", response_model=list[SessionSummary])
 async def list_sessions(db: Db) -> list[SessionSummary]:
     rows = (await db.exec(select(SessionRow).order_by(col(SessionRow.started_at).desc()))).all()
-    return [_summary(r) for r in rows]
+    return [summary(r) for r in rows]
 
 
 @router.post("/sessions", response_model=SessionView, status_code=201)
@@ -443,8 +444,17 @@ async def freeze_report(
 
 @router.post("/sessions/{session_id}/submit", response_model=SubmitResult)
 async def submit(
-    session_id: str, report: Report, db: Db, store: Store, settings: Config
+    session_id: str,
+    report: Report,
+    db: Db,
+    store: Store,
+    settings: Config,
+    background: BackgroundTasks,
+    grader: Annotated[Grader, Depends(get_grader)],
 ) -> SubmitResult:
-    """Freeze the report. Late submissions are accepted and flagged ``overtime``."""
+    """Freeze the report and grade it in the background. Late submissions are accepted
+    and flagged ``overtime``."""
     session = await live_session(db, session_id)
-    return await freeze_report(db, store, settings, session, report)
+    result = await freeze_report(db, store, settings, session, report)
+    background.add_task(grader.grade, session.id)
+    return result

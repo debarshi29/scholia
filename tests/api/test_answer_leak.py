@@ -71,3 +71,26 @@ async def test_no_route_serves_problem_files_directly(lab: Lab) -> None:
         resp = await lab.client.get(url)
         assert resp.status_code in (404, 405)
         assert_clean(resp.text)
+
+
+async def test_debrief_is_closed_until_submit_then_reveals_the_key(lab: Lab) -> None:
+    sid = (await lab.start(problem_id=lab.problem_ids[0]))["id"]
+    before = await lab.client.get(f"/api/sessions/{sid}/debrief")
+    assert before.status_code == 409 and before.json()["error"]["code"] == "not_submitted"
+    assert_clean(before.text)
+    regrade = await lab.client.post(f"/api/sessions/{sid}/regrade")
+    assert regrade.status_code == 409  # a live session cannot be graded into revealing the key
+    assert_clean((await lab.client.get(f"/api/sessions/{sid}/debrief")).text)
+
+    await lab.client.post(f"/api/sessions/{sid}/submit", json={"findings": []})
+    after = await lab.client.get(f"/api/sessions/{sid}/debrief")
+    assert after.status_code == 200
+    for secret in SECRETS:
+        if secret != "SECRET_TEST_PATCH":  # tests/ is never served, even after submit
+            assert secret in after.text  # the gate, not an empty key, kept it clean before
+    assert "SECRET_TEST_PATCH" not in after.text
+
+    # Another live session on the same problem still sees nothing.
+    other = (await lab.start(problem_id=lab.problem_ids[0]))["id"]
+    assert_clean((await lab.client.get(f"/api/sessions/{other}")).text)
+    assert (await lab.client.get(f"/api/sessions/{other}/debrief")).status_code == 409

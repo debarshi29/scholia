@@ -96,8 +96,10 @@ scholia/
       match.py              # deterministic matching
       judge.py              # Gemini rubric scoring
       audit.py              # assistant-claim audit
+      run.py                # one grading pass: match, judge, audit, tracker
       prompts/              # judge + audit prompt templates (versioned files)
     tracker.py
+    debrief.py              # debrief + regrade routes (the only answer-returning endpoint)
   web/                      # React app
     src/pages/{Library,Session,Debrief}.tsx
     src/components/
@@ -205,10 +207,10 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 | Table | Key columns |
 |---|---|
 | problems | id, version, tier, source, files, lines, categories, published_at |
-| sessions | id, problem_id, problem_version, mode, ctx_cap, q_budget, started_at, submitted_at, overtime |
+| sessions | id, problem_id, problem_version, mode, ctx_cap, q_budget, started_at, submitted_at, overtime, design_notes, graded_at, grade_error, design_score, design_rationale, stats_delta |
 | queries | id, session_id, seq, file, line_from, line_to, tokens, question, reply, model, latency_ms, refused_reason |
 | findings | id, session_id, file, line_from, line_to, category, explanation, fix |
-| outcomes | session_id, bug_id, finding_id, status (`found` / `partial` / `missed` / `extra`), assisted, judge_mechanism, judge_fix |
+| outcomes | session_id, bug_id, finding_id, status (`found` / `partial` / `missed` / `extra` / `ungraded`), assisted, judge_mechanism, judge_fix, judge_notes, prompt_version |
 | claim_audits | query_id, verdict (`correct` / `wrong` / `unverifiable`), relied_on, rationale |
 | category_stats | category, attempts, misses, updated_at |
 
@@ -235,7 +237,7 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 - `POST /api/sessions/{id}/ask` `{file, line_from, line_to, question}`: goes to the proxy.
 - `POST /api/sessions/{id}/measure` `{file, line_from, line_to, question?}`: token cost of a selection for the context bar. It reaches no model, costs no budget and is not logged as an exchange.
 - `POST /api/sessions/{id}/submit` `{findings, design_notes}`: freezes the report and runs grading in a background task.
-- `GET /api/sessions/{id}/debrief`: returns 409 until submitted and graded.
+- `GET /api/sessions/{id}/debrief`: returns 409 until submitted and graded (`not_submitted`, `grading_pending` or `grading_failed`). `POST /api/sessions/{id}/regrade` grades a submitted session again, for example after the judge was unreachable.
 - **Picker:** weight each unattempted problem by the sum of the user's miss rates over its categories, plus an exploration floor of 0.1 so unseen categories still come up. Once every problem has been attempted, all problems are eligible again.
 - The `problems` index table is rebuilt from `problems/` on every API start; the folder is the source of truth.
 
@@ -254,9 +256,15 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 3. **audit.py:** for each assistant reply, the judge labels it `correct`, `wrong` or `unverifiable` against the answer key. `relied_on` is true when a `wrong` claim about lines X is followed by the user not reporting a key bug that overlaps X (or reporting an incorrect explanation there).
 4. **assisted:** a found bug is `assisted` if any query's line range overlapped it before the finding was made. Without timestamps per finding in v1, use "any query overlapped it".
 - Prompts live as files in `grader/prompts/` with a version header. Store the prompt version on every outcome row.
+- `run.py` orchestrates one grading pass and is the only code that opens `answer.json` for a session; it refuses sessions without `submitted_at`. Grading always completes: if the judge is unreachable, unconfigured or returns invalid JSON twice, matched bugs get status `ungraded` and can be regraded later.
+- A matched finding scored below 2 on mechanism is `partial`, never `missed`: the judge cannot undo a match.
+- `relied_on` uses "missed, or matched with a mechanism score below 2" for "not reporting the bug or reporting an incorrect explanation". Revisit this in M5.
+- Replies the judge could not label get no `claim_audits` row and show as "not audited".
+- Design notes: empty notes score 0 without calling the judge. Problems with no reference design notes (all Tier 0 problems today) are not scored for design.
+- Code from a problem whose licence is not on the allowlist is never sent to the judge (invariant 7); such sessions stay `ungraded`.
 
 ### Tracker
-After grading, update `category_stats` from that session's key bugs (each attempt adds to attempts, each miss adds to misses).
+After grading, update `category_stats` from that session's key bugs (each attempt adds to attempts, each miss adds to misses). A session is counted once: the before/after numbers are stored on the session (`stats_delta`) and a regrade does not add to them.
 
 ---
 
@@ -287,6 +295,7 @@ SESSION_MINUTES=60
 MAX_REPLY_TOKENS=512
 MAX_QUESTION_CHARS=1000
 MATCH_TOLERANCE_LINES=3
+JUDGE_MAX_TOKENS=700
 DB_PATH=data/scholia.db
 PROBLEMS_DIR=problems
 ```
