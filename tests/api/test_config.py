@@ -33,3 +33,14 @@ def test_rejects_non_positive_cap(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DEFAULT_CTX_CAP", "0")
     with pytest.raises(ValueError):
         Settings(_env_file=None)  # type: ignore[call-arg]
+
+
+def test_gemini_model_is_fallback_for_both_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    for var in ("JUDGE_MODEL", "REALISTIC_MODEL"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("GEMINI_MODEL", "flash-x")
+    s = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert (s.judge_model, s.realistic_model) == ("flash-x", "flash-x")
+    monkeypatch.setenv("JUDGE_MODEL", "judge-y")
+    s = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert (s.judge_model, s.realistic_model) == ("judge-y", "flash-x")
