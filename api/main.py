@@ -11,6 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from api.backends.ollama import OllamaBackend
 from api.config import get_settings
 from api.db import init_db, make_engine
+from api.debrief import router as debrief_router
 from api.errors import (
     ApiError,
     api_error_handler,
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await register(engine, await asyncio.to_thread(scan, settings.problems_dir))
     app.state.engine = engine
     app.state.proxy = None
+    app.state.grader = None
     yield
     proxy = app.state.proxy
     local = getattr(proxy, "local", None)
@@ -47,6 +49,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(StarletteHTTPException, http_error_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)
     app.include_router(sessions_router)
+    app.include_router(debrief_router)
 
     @app.get("/api/health")
     async def health() -> dict[str, str]:

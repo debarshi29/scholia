@@ -3,11 +3,14 @@
 import asyncio
 
 from fastapi import Request
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from api.backends.base import ChatBackend
 from api.backends.gemini import GeminiBackend
 from api.backends.ollama import OllamaBackend
 from api.config import Settings, get_settings
+from api.grader.judge import Judge
+from api.grader.run import Grader
 from api.problems import ProblemStore
 from api.proxy import Proxy
 from api.tokens import HFTokenCounter
@@ -45,3 +48,23 @@ async def get_proxy(request: Request) -> Proxy:
 
 def get_store() -> ProblemStore:
     return ProblemStore(get_settings().problems_dir)
+
+
+def build_grader(settings: Settings, engine: AsyncEngine) -> Grader:
+    backend: ChatBackend | None = None
+    if settings.gemini_api_key is not None and settings.judge_model:
+        backend = GeminiBackend(settings.gemini_api_key.get_secret_value(), settings.judge_model)
+    return Grader(
+        engine=engine,
+        settings=settings,
+        store=ProblemStore(settings.problems_dir),
+        judge=Judge(backend, settings.judge_max_tokens),
+    )
+
+
+def get_grader(request: Request) -> Grader:
+    state = request.app.state
+    if getattr(state, "grader", None) is None:
+        state.grader = build_grader(get_settings(), state.engine)
+    grader: Grader = state.grader
+    return grader
