@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from api.backends.base import BackendError, ChatMessage
 from api.config import get_settings
-from api.deps import get_proxy
+from api.deps import get_grader, get_proxy
+from api.grader.judge import Judge
+from api.grader.run import Grader
 from api.main import create_app
 from api.problems import ProblemStore
 from api.proxy import Proxy
@@ -98,6 +100,8 @@ class Lab:
     proxy: Proxy
     local: FakeBackend
     remote: FakeBackend
+    judge: FakeBackend
+    grader: Grader
     app: Any
     problem_ids: list[str] = field(default_factory=list)
 
@@ -132,8 +136,14 @@ async def lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[
     )
     app = create_app()
     app.dependency_overrides[get_proxy] = lambda: proxy
+    judge = FakeBackend("fake-judge")  # default reply is not JSON, so scores stay ungraded
     async with app.router.lifespan_context(app):
+        store = ProblemStore(problems)
+        grader = Grader(app.state.engine, settings, store, Judge(judge, settings.judge_max_tokens))
+        app.dependency_overrides[get_grader] = lambda: grader
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
-            yield Lab(client, app.state.engine, problems, proxy, local, remote, app, ids)
+            yield Lab(
+                client, app.state.engine, problems, proxy, local, remote, judge, grader, app, ids
+            )
     get_settings.cache_clear()
