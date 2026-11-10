@@ -2,8 +2,9 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,8 +18,19 @@ class Settings(BaseSettings):
 
     # Cloud (Gemini): judge + Realistic mode
     gemini_api_key: SecretStr | None = None
+    gemini_model: str = ""
+    """Fallback for ``judge_model`` and ``realistic_model`` when those are not set."""
     judge_model: str = ""
     realistic_model: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _gemini_model_fallback(cls, data: Any) -> Any:
+        if isinstance(data, dict) and data.get("gemini_model"):
+            for key in ("judge_model", "realistic_model"):
+                if not data.get(key):
+                    data[key] = data["gemini_model"]
+        return data
 
     # Local (Ollama): Constrained mode
     ollama_base_url: str = "http://localhost:11434/v1"

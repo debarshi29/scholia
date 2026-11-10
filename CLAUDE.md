@@ -267,6 +267,7 @@ The approved mockups are on the design canvas (boards: Library, Session, Debrief
 
 ```
 GEMINI_API_KEY=
+GEMINI_MODEL=                 # used for both models below unless they are set
 JUDGE_MODEL=                  # a free-tier Gemini Flash model name
 REALISTIC_MODEL=              # usually same as JUDGE_MODEL
 OLLAMA_BASE_URL=http://localhost:11434/v1
