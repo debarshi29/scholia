@@ -1,0 +1,75 @@
+{
+  "note": "Finding sits 3 lines below the bug: inside the tolerance, so it matches. Explanation is vague: partial.",
+  "tolerance": 3,
+  "answer": {
+    "problem_id": "P-0002",
+    "version": 1,
+    "bugs": [
+      {
+        "id": "b1",
+        "file": "cache.py",
+        "lines": [
+          100,
+          100
+        ],
+        "category": "boundary",
+        "mechanism": "Mechanism text for the key bug.",
+        "fix_diff": "--- a/cache.py\n+++ b/cache.py\n@@\n-old\n+new\n"
+      }
+    ],
+    "design_notes": []
+  },
+  "report": {
+    "findings": [
+      {
+        "file": "cache.py",
+        "line_from": 103,
+        "line_to": 105,
+        "category": "logic",
+        "explanation": "My explanation.",
+        "fix": "My fix."
+      }
+    ],
+    "design_notes": "Some thoughts."
+  },
+  "queries": [],
+  "judge": {
+    "findings": {
+      "b1": {
+        "mechanism": 1,
+        "fix": 0,
+        "notes": "Right place, vague cause."
+      }
+    },
+    "design": null,
+    "audits": {}
+  },
+  "expected": {
+    "pairs": [
+      [
+        "b1",
+        0
+      ]
+    ],
+    "missed": [],
+    "extra": [],
+    "outcomes": [
+      {
+        "bug_id": "b1",
+        "finding": 0,
+        "status": "partial",
+        "assisted": false,
+        "mechanism": 1,
+        "fix": 0
+      }
+    ],
+    "design_score": null,
+    "audits": [],
+    "stats": {
+      "boundary": {
+        "attempts": 1,
+        "misses": 0
+      }
+    }
+  }
+}

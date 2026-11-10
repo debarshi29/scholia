@@ -1,0 +1,101 @@
+{
+  "note": "One bug, flagged on its exact lines after asking about them. Judge gives full marks.",
+  "tolerance": 3,
+  "answer": {
+    "problem_id": "P-0001",
+    "version": 1,
+    "bugs": [
+      {
+        "id": "b1",
+        "file": "worker.py",
+        "lines": [
+          30,
+          36
+        ],
+        "category": "concurrency",
+        "mechanism": "Mechanism text for the key bug.",
+        "fix_diff": "--- a/worker.py\n+++ b/worker.py\n@@\n-old\n+new\n"
+      }
+    ],
+    "design_notes": [
+      "Retry policy is hard-coded; inject it."
+    ]
+  },
+  "report": {
+    "findings": [
+      {
+        "file": "worker.py",
+        "line_from": 30,
+        "line_to": 36,
+        "category": "concurrency",
+        "explanation": "My explanation.",
+        "fix": "My fix."
+      }
+    ],
+    "design_notes": "Inject the retry policy."
+  },
+  "queries": [
+    {
+      "seq": 1,
+      "file": "worker.py",
+      "line_from": 28,
+      "line_to": 40,
+      "question": "What does this do?",
+      "reply": "Assistant reply.",
+      "refused_reason": null
+    }
+  ],
+  "judge": {
+    "findings": {
+      "b1": {
+        "mechanism": 2,
+        "fix": 2,
+        "notes": "Correct."
+      }
+    },
+    "design": {
+      "score": 3,
+      "notes": "Covers it."
+    },
+    "audits": {
+      "1": {
+        "verdict": "correct",
+        "rationale": "Accurate description."
+      }
+    }
+  },
+  "expected": {
+    "pairs": [
+      [
+        "b1",
+        0
+      ]
+    ],
+    "missed": [],
+    "extra": [],
+    "outcomes": [
+      {
+        "bug_id": "b1",
+        "finding": 0,
+        "status": "found",
+        "assisted": true,
+        "mechanism": 2,
+        "fix": 2
+      }
+    ],
+    "design_score": 3,
+    "audits": [
+      {
+        "seq": 1,
+        "verdict": "correct",
+        "relied_on": false
+      }
+    ],
+    "stats": {
+      "concurrency": {
+        "attempts": 1,
+        "misses": 0
+      }
+    }
+  }
+}

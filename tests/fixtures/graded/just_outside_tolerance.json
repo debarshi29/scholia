@@ -1,0 +1,124 @@
+{
+  "note": "Finding starts 4 lines below the bug: outside the tolerance. The bug is missed and the finding is extra. A wrong assistant claim about the bug's lines was relied on.",
+  "tolerance": 3,
+  "answer": {
+    "problem_id": "P-0003",
+    "version": 1,
+    "bugs": [
+      {
+        "id": "b1",
+        "file": "cache.py",
+        "lines": [
+          100,
+          100
+        ],
+        "category": "null_empty",
+        "mechanism": "Mechanism text for the key bug.",
+        "fix_diff": "--- a/cache.py\n+++ b/cache.py\n@@\n-old\n+new\n"
+      }
+    ],
+    "design_notes": []
+  },
+  "report": {
+    "findings": [
+      {
+        "file": "cache.py",
+        "line_from": 104,
+        "line_to": 110,
+        "category": "logic",
+        "explanation": "My explanation.",
+        "fix": "My fix."
+      }
+    ],
+    "design_notes": ""
+  },
+  "queries": [
+    {
+      "seq": 1,
+      "file": "cache.py",
+      "line_from": 95,
+      "line_to": 102,
+      "question": "What does this do?",
+      "reply": "Assistant reply.",
+      "refused_reason": null
+    },
+    {
+      "seq": 2,
+      "file": "cache.py",
+      "line_from": 1,
+      "line_to": 20,
+      "question": "What does this do?",
+      "reply": "Assistant reply.",
+      "refused_reason": null
+    },
+    {
+      "seq": 3,
+      "file": null,
+      "line_from": null,
+      "line_to": null,
+      "question": "What does this do?",
+      "reply": null,
+      "refused_reason": "no_selection"
+    }
+  ],
+  "judge": {
+    "findings": {},
+    "design": null,
+    "audits": {
+      "1": {
+        "verdict": "wrong",
+        "rationale": "Said the None check was fine."
+      },
+      "2": {
+        "verdict": "wrong",
+        "rationale": "Misdescribed the imports."
+      }
+    }
+  },
+  "expected": {
+    "pairs": [],
+    "missed": [
+      "b1"
+    ],
+    "extra": [
+      0
+    ],
+    "outcomes": [
+      {
+        "bug_id": "b1",
+        "finding": null,
+        "status": "missed",
+        "assisted": false,
+        "mechanism": null,
+        "fix": null
+      },
+      {
+        "bug_id": null,
+        "finding": 0,
+        "status": "extra",
+        "assisted": false,
+        "mechanism": null,
+        "fix": null
+      }
+    ],
+    "design_score": null,
+    "audits": [
+      {
+        "seq": 1,
+        "verdict": "wrong",
+        "relied_on": true
+      },
+      {
+        "seq": 2,
+        "verdict": "wrong",
+        "relied_on": false
+      }
+    ],
+    "stats": {
+      "null_empty": {
+        "attempts": 1,
+        "misses": 1
+      }
+    }
+  }
+}
