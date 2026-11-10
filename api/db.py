@@ -21,6 +21,11 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def as_utc(value: datetime) -> datetime:
+    """SQLite returns naive datetimes; everything stored here is UTC."""
+    return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+
 class ProblemRow(SQLModel, table=True):
     __tablename__ = "problems"
 
@@ -51,6 +56,15 @@ class SessionRow(SQLModel, table=True):
     started_at: datetime = Field(default_factory=utcnow)
     submitted_at: datetime | None = None
     overtime: bool = False
+    design_notes: str = ""
+    """The report's free-text design notes, frozen at submit."""
+    graded_at: datetime | None = None
+    grade_error: str | None = None
+    """Set when grading crashed; the debrief stays unavailable until a regrade succeeds."""
+    design_score: int | None = Field(default=None, ge=0, le=3)
+    design_rationale: str = ""
+    stats_delta: list[dict[str, Any]] | None = Field(default=None, sa_column=Column(JSON))
+    """Category stats before/after this session, written once by the tracker."""
 
 
 class QueryRow(SQLModel, table=True):
@@ -100,6 +114,7 @@ class OutcomeRow(SQLModel, table=True):
     assisted: bool = False
     judge_mechanism: int | None = Field(default=None, ge=0, le=2)
     judge_fix: int | None = Field(default=None, ge=0, le=2)
+    judge_notes: str = ""
     prompt_version: str | None = None
 
 
