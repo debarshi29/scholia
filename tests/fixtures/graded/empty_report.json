@@ -1,0 +1,57 @@
+{
+  "note": "Nothing reported: the bug is missed. No queries, nothing to audit.",
+  "tolerance": 3,
+  "answer": {
+    "problem_id": "P-0005",
+    "version": 1,
+    "bugs": [
+      {
+        "id": "b1",
+        "file": "x.py",
+        "lines": [
+          5,
+          6
+        ],
+        "category": "resource_leak",
+        "mechanism": "Mechanism text for the key bug.",
+        "fix_diff": "--- a/x.py\n+++ b/x.py\n@@\n-old\n+new\n"
+      }
+    ],
+    "design_notes": []
+  },
+  "report": {
+    "findings": [],
+    "design_notes": ""
+  },
+  "queries": [],
+  "judge": {
+    "findings": {},
+    "design": null,
+    "audits": {}
+  },
+  "expected": {
+    "pairs": [],
+    "missed": [
+      "b1"
+    ],
+    "extra": [],
+    "outcomes": [
+      {
+        "bug_id": "b1",
+        "finding": null,
+        "status": "missed",
+        "assisted": false,
+        "mechanism": null,
+        "fix": null
+      }
+    ],
+    "design_score": null,
+    "audits": [],
+    "stats": {
+      "resource_leak": {
+        "attempts": 1,
+        "misses": 1
+      }
+    }
+  }
+}
