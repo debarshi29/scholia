@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     # Grader
     match_tolerance_lines: int = Field(default=3, ge=0)
+    judge_max_tokens: int = Field(default=700, gt=0)
 
     # Storage
     db_path: Path = Path("data/scholia.db")
