@@ -40,7 +40,7 @@ Each run writes a build log to `data/logs/`.
 
 ```bash
 uv run ruff check . && uv run ruff format --check .
-uv run mypy schema api/grader
+uv run python -m mypy schema api/grader
 uv run pytest -q
 ```
 

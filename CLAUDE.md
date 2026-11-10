@@ -44,7 +44,7 @@ If a task seems to need any of these, stop and ask.
 | LLM client | Thin internal adapter (`api/backends/`) over the OpenAI-compatible API. Do not add LiteLLM unless asked. |
 | Tokenizer | HF `tokenizers` / `transformers` AutoTokenizer for `Qwen/Qwen2.5-Coder-3B-Instruct` (exact counts for the cap). Gemini counts are approximate. |
 | Retries | tenacity (exponential backoff on 429 and 5xx) |
-| Datasets | Hugging Face `datasets` (SWE-bench Lite), git clone of the BugsInPy repo |
+| Datasets | SWE-bench Lite rows from the Hugging Face dataset viewer JSON API via `httpx` (the `datasets` package needs `pyarrow`, which Smart App Control blocks on this machine), git clone of the BugsInPy repo |
 | Git ops | GitPython |
 | Frontend | React + Vite + TypeScript, Tailwind CSS, `@monaco-editor/react`, TanStack Query, Zustand |
 | Tooling | uv (Python), pnpm (web), ruff (lint and format), pytest (async tests via the anyio plugin), `httpx` (API tests through `ASGITransport`), mypy (strict on `schema/` and `api/grader/`) |
@@ -118,7 +118,7 @@ ollama pull qwen2.5-coder:3b
 cp .env.example .env            # then add GEMINI_API_KEY
 
 # run
-uv run uvicorn api.main:app --reload --port 8000
+uv run python -m uvicorn api.main:app --reload --port 8000
 cd web && pnpm dev               # http://localhost:5173, proxies /api to :8000
 
 # corpus
@@ -128,13 +128,15 @@ uv run python -m corpus.build --tier 0 --source swebench --limit 20 --dry-run   
 
 # quality
 uv run ruff check . && uv run ruff format --check .
-uv run mypy schema api/grader
+uv run python -m mypy schema api/grader
 uv run pytest -q
 cd web && pnpm typecheck && pnpm lint
 
 # regenerate the frontend API client after any API change
 cd web && pnpm gen:api
 ```
+
+Smart App Control is on for this machine and blocks the unsigned `uvicorn.exe` and `mypy.exe` launchers that uv generates, so run those two as modules (`python -m ...`) as shown above.
 
 Before calling a task done, run `ruff`, `mypy` and `pytest` (plus web `typecheck` if you touched `web/`), and report the results.
 
@@ -192,7 +194,7 @@ problems/P-0001/v1/
   "design_notes": ["Retry policy is hard-coded; inject it."]
 }
 ```
-Tier 0 conversions usually have a single bug. `category` is assigned by a Gemini classification pass during corpus build, stored with `category_source: "llm"` so it can be reviewed later. Severity defaults to `medium`.
+Tier 0 conversions always have a single bug. `category` is assigned by a Gemini classification pass during corpus build, stored with `category_source: "llm"` so it can be reviewed later. Severity defaults to `medium`.
 
 ### Report (submitted by the user)
 `findings[]`: `{file, line_from, line_to, category, explanation, fix}`, plus `design_notes: str`.
@@ -213,10 +215,11 @@ Tier 0 conversions usually have a single bug. `category` is assigned by a Gemini
 ## 7. Component specs
 
 ### Corpus Tier 0 (`corpus/sources/`)
-- **SWE-bench Lite:** load it from Hugging Face. For each instance, check out `repo@base_commit` (shallow clone, cached under `data/repos/`). Take the **source file(s) the gold `patch` touches**, excluding test files. Keep the instance only if it touches 1-2 source files and each file is 150-500 lines. v1 does no cropping (78 of 300 SWE-bench Lite instances fit as-is). `lines` in the answer key come from the patch hunks, mapped to buggy-version line numbers.
+- **SWE-bench Lite:** load it from the Hugging Face dataset viewer API (cached in `data/repos/_datasets/`). For each instance, check out `repo@base_commit` (shallow clone, cached under `data/repos/`). Take the **source file(s) the gold `patch` touches**, excluding test files. Keep the instance only if it touches 1-2 source files and each file is 150-500 lines. v1 does no cropping (78 of 300 SWE-bench Lite instances fit as-is). `lines` in the answer key come from the patch hunks, mapped to buggy-version line numbers.
 - **BugsInPy:** same idea, using each bug's patch against the buggy commit.
 - Check each dataset's actual field names and licence when you implement it. Do not assume them from this file.
 - **Sanitise** (`sanitise.py`): remove comments that mention the fix, TODO/FIXME/XXX on the bug's lines, and issue numbers. Never alter code semantics, and keep line numbers stable. Replace a removed comment line with an empty line rather than deleting it.
+- **One fix, one bug:** import-only changes are ignored, and the instance is kept only if the remaining changes form a single region (changed lines at most 10 apart) in one file. Fixes spread over several places are dropped as `fix_not_localised`, so every Tier 0 problem has exactly one bug in one file.
 - `--limit N` is the number of problems to **publish**; candidates are scanned in dataset order until N are kept. `--dry-run` runs every deterministic check and publishes nothing.
 - Patch hunk headers can be off from `base_commit` (git tolerates offsets), so changed lines are located by hunk content, not by header numbers. Lines end at `
 ` only (`str.splitlines()` also splits on form feeds).
