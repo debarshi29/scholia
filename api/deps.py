@@ -41,3 +41,7 @@ async def get_proxy(request: Request) -> Proxy:
                 state.proxy = await build_proxy(get_settings())
     proxy: Proxy = state.proxy
     return proxy
+
+
+def get_store() -> ProblemStore:
+    return ProblemStore(get_settings().problems_dir)

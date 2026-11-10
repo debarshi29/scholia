@@ -8,6 +8,8 @@ class OutcomeStatus(StrEnum):
     PARTIAL = "partial"
     MISSED = "missed"
     EXTRA = "extra"
+    UNGRADED = "ungraded"
+    """Matched a bug by location, but the judge produced no valid score. Never guessed."""
 
 
 class ClaimVerdict(StrEnum):
