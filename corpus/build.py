@@ -140,6 +140,9 @@ def prepare(
         regions = {fp.path: fp.changed_regions(originals[fp.path]) for fp in patches}
     except PatchError as exc:
         raise Dropped(DropReason.PATCH_UNPARSEABLE, str(exc)) from exc
+    # One upstream fix is one bug, so it must sit in one place a reader can point at.
+    if sum(len(r) for r in regions.values()) != 1:
+        raise Dropped(DropReason.FIX_NOT_LOCALISED, json.dumps(regions))
     try:
         sanitised = {path: sanitise(text, regions[path]).text for path, text in originals.items()}
     except SanitiseError as exc:
@@ -235,7 +238,7 @@ def source_for(name: str, data_dir: Path) -> CandidateSource:
     if name == Source.SWEBENCH:
         from corpus.sources.swebench import SWEBenchLite
 
-        return SWEBenchLite()
+        return SWEBenchLite(data_dir / "repos" / "_datasets")
     if name == Source.BUGSINPY:
         from corpus.sources.bugsinpy import BugsInPy
 

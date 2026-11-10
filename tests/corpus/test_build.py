@@ -168,6 +168,21 @@ def test_every_candidate_is_accounted_for(tmp_path: Path) -> None:
     assert log.candidates_seen == len(log.kept) + len(log.dropped) == 5
 
 
+def test_fix_spread_over_several_places_is_dropped(tmp_path: Path) -> None:
+    spread = (
+        PATCH.split("diff --git a/pkg/tests")[0]
+        + """@@ -149,3 +149,3 @@
+ v149 = 149
+-v150 = 150
++v150 = 151
+ v151 = 151
+"""
+    )
+    log = _run(tmp_path, [_cand("spread", patch=spread)])
+    assert log.dropped[0]["reason"] == "fix_not_localised"
+    assert json.loads(log.dropped[0]["detail"]) == {"pkg/core.py": [[50, 50], [150, 150]]}
+
+
 def test_licence_checked_before_classifier(tmp_path: Path) -> None:
     """Invariant 7: non-allowlisted code never reaches Gemini."""
     classifier = FakeClassifier()
