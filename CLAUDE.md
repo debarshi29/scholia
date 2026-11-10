@@ -83,6 +83,8 @@ scholia/
     log.py                  # JSON log formatter
     problems.py             # read-only access to src/ + meta.json (never answer.json/tests)
     deps.py                 # FastAPI dependencies (lazy proxy construction)
+    errors.py               # ApiError + error-envelope handlers
+    jsonout.py              # strict parsing of model JSON output
     sessions.py             # picker, server-side clock, report intake
     proxy.py                # assistant proxy (ALL constraints enforced here)
     tokens.py               # token counting
@@ -226,13 +228,16 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 - Every build run writes a summary (candidates, kept, dropped by reason) to `data/logs/`.
 
 ### Session API (`api/sessions.py`)
-- `GET /api/problems`: list with stats. No answer data.
+- `GET /api/problems`: list with stats (attempts, last attempt). No answer data: with one bug per problem, the category, upstream id and commit would all point at the answer, so cards omit them.
+- `GET /api/stats`: per-category attempts, misses and miss rate (the weak-spot bars). `GET /api/settings`: defaults and which modes are available. `GET /api/sessions`: session history.
 - `POST /api/sessions` `{problem_id?, mode, ctx_cap, q_budget}`: if `problem_id` is missing, use the weighted picker.
 - `GET /api/sessions/{id}`: files (src only), settings, time left, questions used.
 - `POST /api/sessions/{id}/ask` `{file, line_from, line_to, question}`: goes to the proxy.
+- `POST /api/sessions/{id}/measure` `{file, line_from, line_to, question?}`: token cost of a selection for the context bar. It reaches no model, costs no budget and is not logged as an exchange.
 - `POST /api/sessions/{id}/submit` `{findings, design_notes}`: freezes the report and runs grading in a background task.
 - `GET /api/sessions/{id}/debrief`: returns 409 until submitted and graded.
-- **Picker:** weight each unattempted problem by the sum of the user's miss rates over its categories, with a small exploration floor so unseen categories still come up.
+- **Picker:** weight each unattempted problem by the sum of the user's miss rates over its categories, plus an exploration floor of 0.1 so unseen categories still come up. Once every problem has been attempted, all problems are eligible again.
+- The `problems` index table is rebuilt from `problems/` on every API start; the folder is the source of truth.
 
 ### Assistant proxy (`api/proxy.py`)
 - It enforces invariants 2-4 and 6.
