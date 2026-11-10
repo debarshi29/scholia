@@ -46,7 +46,7 @@ If a task seems to need any of these, stop and ask.
 | Retries | tenacity (exponential backoff on 429 and 5xx) |
 | Datasets | SWE-bench Lite rows from the Hugging Face dataset viewer JSON API via `httpx` (the `datasets` package needs `pyarrow`, which Smart App Control blocks on this machine), git clone of the BugsInPy repo |
 | Git ops | GitPython |
-| Frontend | React + Vite + TypeScript, Tailwind CSS, `@monaco-editor/react`, TanStack Query, Zustand |
+| Frontend | React + Vite + TypeScript 6, Tailwind CSS 3 (with its `postcss` and `autoprefixer` peers), `@monaco-editor/react` with a locally bundled `monaco-editor`, TanStack Query, Zustand, `@fontsource` IBM Plex fonts, `openapi-typescript` for the client types, ESLint. No router library: `web/src/router.tsx` is a small History API router. |
 | Tooling | uv (Python), pnpm (web), ruff (lint and format), pytest (async tests via the anyio plugin), `httpx` (API tests through `ASGITransport`), mypy (strict on `schema/` and `api/grader/`) |
 
 Pin versions in `uv.lock` and `pnpm-lock.yaml`. **Ask before adding any dependency** that is not in this table.
@@ -99,11 +99,14 @@ scholia/
       run.py                # one grading pass: match, judge, audit, tracker
       prompts/              # judge + audit prompt templates (versioned files)
     tracker.py
+    openapi.py              # writes the OpenAPI document for pnpm gen:api
     debrief.py              # debrief + regrade routes (the only answer-returning endpoint)
   web/                      # React app
     src/pages/{Library,Session,Debrief}.tsx
     src/components/
-    src/api/                # typed client generated from FastAPI OpenAPI
+    src/api/                # schema.d.ts generated from FastAPI OpenAPI (pnpm gen:api) + client.ts
+    src/store/              # Zustand store for the report draft (persisted in localStorage)
+    src/router.tsx          # History API router for the three pages
   problems/                 # generated; git-ignored except problems/_seed/
   data/                     # sqlite db, logs; git-ignored
   tests/
@@ -140,7 +143,7 @@ cd web && pnpm typecheck && pnpm lint
 cd web && pnpm gen:api
 ```
 
-Smart App Control is on for this machine and blocks the unsigned `uvicorn.exe` and `mypy.exe` launchers that uv generates, so run those two as modules (`python -m ...`) as shown above.
+Smart App Control is on for this machine and blocks the unsigned `uvicorn.exe` and `mypy.exe` launchers that uv generates, so run those two as modules (`python -m ...`) as shown above. It also blocks Tailwind 4's native class scanner, which is why the web app uses Tailwind 3 (pure JavaScript). TypeScript stays on 6 until `typescript-eslint` and `openapi-typescript` support 7. Run `pnpm` from PowerShell: its shim does not work in Git Bash.
 
 Before calling a task done, run `ruff`, `mypy` and `pytest` (plus web `typecheck` if you touched `web/`), and report the results.
 

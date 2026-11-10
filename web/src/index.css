@@ -1,0 +1,65 @@
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Palette as CSS variables too, for the few rules written by hand below. */
+:root {
+  --color-bg: #0e1116;
+  --color-line: #2a333f;
+  --color-ink: #e6eaf0;
+  --color-cyan: #5cc8e8;
+  --color-coral: #ff7a6b;
+  --color-green: #6fd08c;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* A visible focus ring on everything that can take keyboard focus. */
+  :focus-visible {
+    outline: 2px solid var(--color-cyan);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-cyan) 30%, transparent);
+  }
+  * {
+    scrollbar-color: var(--color-line) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+/* Monaco decorations for flagged lines. */
+.flagged-line {
+  background: color-mix(in srgb, var(--color-coral) 14%, transparent);
+}
+.flagged-glyph {
+  border-left: 3px solid var(--color-coral);
+  margin-left: 4px;
+}
+.key-line {
+  background: color-mix(in srgb, var(--color-green) 16%, transparent);
+}
+.key-glyph {
+  border-left: 3px solid var(--color-green);
+  margin-left: 4px;
+}
