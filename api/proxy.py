@@ -75,6 +75,22 @@ class AskResult(BaseModel):
     """Constrained mode only."""
 
 
+class MeasureRequest(BaseModel):
+    file: str
+    line_from: int = Field(ge=1)
+    line_to: int = Field(ge=1)
+    question: str = ""
+
+
+class MeasureResult(BaseModel):
+    tokens: int | None
+    ctx_cap: int | None
+    overhead: int | None
+    """Fixed prompt cost (system prompt + template), included in ``tokens``."""
+    fits: bool
+    reason: RefusalReason | None = None
+
+
 class _Refusal(Exception):
     def __init__(self, reason: RefusalReason, tokens: int | None = None) -> None:
         self.reason = reason
@@ -195,19 +211,47 @@ class Proxy:
             q_budget=session.q_budget if constrained else None,
         )
 
-    async def _selected_file(self, session: SessionRow, req: AskRequest) -> list[str]:
-        assert req.file is not None
+    async def _selected_file(
+        self, session: SessionRow, file: str, a: int | None, b: int | None
+    ) -> list[str]:
         try:
             lines = await self.store.read_src_lines(
-                session.problem_id, session.problem_version, req.file
+                session.problem_id, session.problem_version, file
             )
         except ProblemFileError as exc:
             raise _Refusal(RefusalReason.INVALID_SELECTION) from exc
-        if req.line_from is not None or req.line_to is not None:
-            a, b = req.line_from, req.line_to
-            if a is None or b is None or not 1 <= a <= b <= len(lines):
-                raise _Refusal(RefusalReason.INVALID_SELECTION)
+        if (a is not None or b is not None) and (
+            a is None or b is None or not 1 <= a <= b <= len(lines)
+        ):
+            raise _Refusal(RefusalReason.INVALID_SELECTION)
         return lines
+
+    async def measure(self, session: SessionRow, req: MeasureRequest) -> MeasureResult:
+        """Token count for a selection, for the UI's context bar. Not an exchange: it reaches
+        no model, costs nothing and reveals only a number about lines the user already sees."""
+        if session.mode != AssistantMode.CONSTRAINED:
+            return MeasureResult(tokens=None, ctx_cap=None, overhead=None, fits=True)
+        try:
+            lines = await self._selected_file(session, req.file, req.line_from, req.line_to)
+        except _Refusal as refusal:
+            return MeasureResult(
+                tokens=None,
+                ctx_cap=session.ctx_cap,
+                overhead=self.constrained_overhead,
+                fits=False,
+                reason=refusal.reason,
+            )
+        fragment = lines[req.line_from - 1 : req.line_to]
+        messages = constrained_messages(fragment, req.line_from, req.question)
+        tokens = count_messages(self.counter, messages)
+        fits = tokens <= session.ctx_cap
+        return MeasureResult(
+            tokens=tokens,
+            ctx_cap=session.ctx_cap,
+            overhead=self.constrained_overhead,
+            fits=fits,
+            reason=None if fits else RefusalReason.OVER_CTX_CAP,
+        )
 
     def _check_question(self, req: AskRequest) -> None:
         if len(req.question) > self.settings.max_question_chars:
@@ -219,7 +263,7 @@ class Proxy:
         # 1. A selection exists (and points at real lines of a served file).
         if req.file is None or req.line_from is None or req.line_to is None:
             raise _Refusal(RefusalReason.NO_SELECTION)
-        lines = await self._selected_file(session, req)
+        lines = await self._selected_file(session, req.file, req.line_from, req.line_to)
         # 2. Size: question length, then the exact token count against ctx_cap.
         self._check_question(req)
         fragment = lines[req.line_from - 1 : req.line_to]
@@ -241,7 +285,9 @@ class Proxy:
             raise _Refusal(RefusalReason.LICENCE_NOT_ALLOWED)
         selection: tuple[str, int, int] | None = None
         if req.file is not None:
-            files = {req.file: await self._selected_file(session, req)}
+            files = {
+                req.file: await self._selected_file(session, req.file, req.line_from, req.line_to)
+            }
             if req.line_from is not None and req.line_to is not None:
                 selection = (req.file, req.line_from, req.line_to)
         else:
