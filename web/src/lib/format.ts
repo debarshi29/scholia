@@ -88,3 +88,27 @@ export function shortDate(iso: string | null | undefined): string {
 export function baseName(path: string): string {
   return path.split("/").pop() ?? path;
 }
+
+/** `L18` or `L30–L36`, the way the boards write line references. */
+export function lref(from: number, to: number): string {
+  return from === to ? `L${from}` : `L${from}–L${to}`;
+}
+
+/** A display name for a problem: problems have ids, not titles. `django: deletion`. */
+export function problemTitle(originRepo: string, files: string[]): string {
+  const repo = originRepo.split("/").pop() ?? originRepo;
+  const path = files[0] ?? "";
+  const stem = baseName(path).replace(/\.py$/, "");
+  // A package's __init__.py is better named by its folder.
+  const first = stem === "__init__" ? (path.split("/").slice(-2, -1)[0] ?? stem) : stem;
+  return first ? `${repo}: ${first}` : repo;
+}
+
+export function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
+/** Bar colour for a miss rate: coral from 40%, amber from 20%, green below. */
+export function rateTone(rate: number): "coral" | "amber" | "green" {
+  return rate >= 0.4 ? "coral" : rate >= 0.2 ? "amber" : "green";
+}

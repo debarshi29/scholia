@@ -114,3 +114,41 @@ export function Loading(props: { label?: string }) {
     </p>
   );
 }
+
+/** The two-option pill switch from the boards. One option is always selected. */
+export function Segmented<T extends string>(props: {
+  label: string;
+  value: T;
+  options: { value: T; label: string; disabled?: boolean; title?: string }[];
+  onChange?: (value: T) => void;
+  tone?: "cyan" | "amber";
+}) {
+  const active = props.tone === "amber" ? "bg-amber text-bg" : "bg-cyan text-bg";
+  return (
+    <div
+      role="radiogroup"
+      aria-label={props.label}
+      className="flex gap-1 rounded-xl border border-line bg-bg p-1.5"
+    >
+      {props.options.map((o) => {
+        const checked = o.value === props.value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            title={o.title}
+            disabled={o.disabled || (!props.onChange && !checked)}
+            onClick={() => props.onChange?.(o.value)}
+            className={`min-h-11 flex-1 rounded-lg px-4 font-semibold whitespace-nowrap transition disabled:cursor-not-allowed ${
+              checked ? active : "text-mute enabled:hover:text-ink disabled:opacity-60"
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
