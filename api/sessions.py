@@ -20,6 +20,7 @@ from api.config import Settings, get_settings
 from api.db import (
     CategoryStatRow,
     FindingRow,
+    OutcomeRow,
     ProblemRow,
     QueryRow,
     SessionRow,
@@ -39,7 +40,7 @@ from api.proxy import (
     RefusalReason,
     questions_used,
 )
-from schema import AssistantMode, BugCategory, Report, Source
+from schema import AssistantMode, BugCategory, OutcomeStatus, Report, Source
 
 router = APIRouter(prefix="/api", tags=["sessions"])
 
@@ -99,6 +100,10 @@ class ProblemCard(BaseModel):
     lines: int
     attempts: int
     last_attempt_at: datetime | None
+    best_found: int | None
+    """Most key bugs matched in one graded attempt (``None`` before the first one)."""
+    best_bugs: int | None
+    best_seconds: int | None
 
 
 class CategoryStat(BaseModel):
@@ -170,6 +175,9 @@ class SessionView(SessionSummary):
     seconds_left: int
     """Display only; the server decides ``overtime`` at submit."""
     questions_used: int
+    origin_repo: str
+    model: str
+    """The model this session's assistant uses."""
     files: list[SourceFile]
     thread: list[ThreadItem]
 
@@ -245,19 +253,52 @@ def _thread_item(q: QueryRow) -> ThreadItem:
 # ---------- library ----------
 
 
+async def best_results(db: AsyncSession) -> dict[str, tuple[int, int, int]]:
+    """Per problem: ``(bugs matched, key bugs, seconds used)`` of the best graded attempt.
+    More bugs wins; ties go to the faster attempt."""
+    matched: dict[str, list[int]] = {}
+    stmt = select(OutcomeRow.session_id, OutcomeRow.status).where(
+        col(OutcomeRow.bug_id).is_not(None)
+    )
+    for session_id, status in (await db.exec(stmt)).all():
+        counts = matched.setdefault(session_id, [0, 0])
+        counts[0] += status in (OutcomeStatus.FOUND, OutcomeStatus.PARTIAL)
+        counts[1] += 1
+    best: dict[str, tuple[int, int, int]] = {}
+    graded = select(SessionRow).where(col(SessionRow.graded_at).is_not(None))
+    for s in (await db.exec(graded)).all():
+        if s.id not in matched or s.submitted_at is None:
+            continue
+        found, bugs = matched[s.id]
+        seconds = round(elapsed_seconds(s, as_utc(s.submitted_at)))
+        current = best.get(s.problem_id)
+        if current is None or (found, -seconds) > (current[0], -current[2]):
+            best[s.problem_id] = (found, bugs, seconds)
+    return best
+
+
 @router.get("/problems", response_model=list[ProblemCard])
 async def list_problems(db: Db, store: Store) -> list[ProblemCard]:
     stmt = select(SessionRow.problem_id, func.count(), func.max(SessionRow.started_at)).group_by(
         col(SessionRow.problem_id)
     )
     attempts = {pid: (n, last) for pid, n, last in (await db.exec(stmt)).all()}
+    best = await best_results(db)
+    rates = miss_rates(list((await db.exec(select(CategoryStatRow))).all()))
+    # Not attempted first, then by picker weight: weak spots come first. The weight
+    # itself and the categories behind it are never sent to the client.
+    ordered = sorted(
+        await latest_problems(db),
+        key=lambda p: (p.id in attempts, -problem_weight(p.categories, rates), p.id),
+    )
     cards: list[ProblemCard] = []
-    for p in await latest_problems(db):
+    for p in ordered:
         try:
             meta = await store.meta(p.id, p.version)
         except ProblemFileError:
             continue  # indexed but missing on disk: not startable, so not listed
         n, last = attempts.get(p.id, (0, None))
+        found, bugs, seconds = best.get(p.id, (None, None, None))
         cards.append(
             ProblemCard(
                 id=p.id,
@@ -270,6 +311,9 @@ async def list_problems(db: Db, store: Store) -> list[ProblemCard]:
                 lines=p.lines,
                 attempts=n,
                 last_attempt_at=as_utc(last) if last else None,
+                best_found=found,
+                best_bugs=bugs,
+                best_seconds=seconds,
             )
         )
     return cards
@@ -335,6 +379,8 @@ async def _view(
             select(QueryRow).where(QueryRow.session_id == session.id).order_by(col(QueryRow.seq))
         )
     ).all()
+    meta = await store.meta(session.problem_id, session.problem_version)
+    constrained = session.mode == AssistantMode.CONSTRAINED
     total = settings.session_minutes * 60
     end = as_utc(session.submitted_at) if session.submitted_at else now()
     return SessionView(
@@ -344,6 +390,8 @@ async def _view(
         session_seconds=total,
         seconds_left=max(0, round(total - elapsed_seconds(session, end))),
         questions_used=await questions_used(db, session.id),
+        origin_repo=meta.origin_repo,
+        model=settings.local_model if constrained else settings.realistic_model,
         files=files,
         thread=[_thread_item(q) for q in queries],
     )

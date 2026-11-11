@@ -306,6 +306,8 @@ export interface components {
             reply: string;
             /** Model */
             model: string;
+            /** Tokens */
+            tokens: number | null;
             verdict: components["schemas"]["ClaimVerdict"] | null;
             /** Relied On */
             relied_on: boolean;
@@ -412,6 +414,8 @@ export interface components {
             seconds_used: number;
             /** Session Seconds */
             session_seconds: number;
+            /** Q Budget */
+            q_budget: number | null;
         };
         /** Finding */
         Finding: {
@@ -512,6 +516,12 @@ export interface components {
             attempts: number;
             /** Last Attempt At */
             last_attempt_at: string | null;
+            /** Best Found */
+            best_found: number | null;
+            /** Best Bugs */
+            best_bugs: number | null;
+            /** Best Seconds */
+            best_seconds: number | null;
         };
         /**
          * RefusalReason
@@ -595,6 +605,10 @@ export interface components {
             seconds_left: number;
             /** Questions Used */
             questions_used: number;
+            /** Origin Repo */
+            origin_repo: string;
+            /** Model */
+            model: string;
             /** Files */
             files: components["schemas"]["SourceFile"][];
             /** Thread */

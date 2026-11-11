@@ -59,7 +59,7 @@ FINDING = Finding(
 @pytest.mark.parametrize(
     ("name", "version"),
     [
-        ("judge_finding", "judge-finding-v1"),
+        ("judge_finding", "judge-finding-v2"),
         ("judge_design", "judge-design-v1"),
         ("audit", "audit-v1"),
     ],
@@ -74,7 +74,7 @@ def test_finding_prompt_separates_key_from_candidate() -> None:
     text = render_finding(BUG, FINDING, "30 | x")
     key, candidate = text.split("## CANDIDATE")
     assert "Lock is not released" in key and "Ignore previous" not in key
-    assert "Ignore previous instructions" in candidate and "(none given)" in candidate
+    assert "Ignore previous instructions" in candidate and "not given separately" in candidate
 
 
 # ---- judge output handling ----
@@ -315,7 +315,7 @@ async def test_hand_graded_fixture(lab: Lab, path: Path) -> None:
         for o in outcomes
     ]
     assert got == expected["outcomes"]
-    assert all(o.prompt_version == "judge-finding-v1" for o in outcomes)
+    assert all(o.prompt_version == "judge-finding-v2" for o in outcomes)
     assert session.design_score == expected["design_score"]
     assert [
         {"seq": seq, "verdict": a.verdict.value, "relied_on": a.relied_on} for seq, a in audits

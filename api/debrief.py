@@ -16,7 +16,7 @@ from api.grader.run import Grader, answered
 from api.problems import ProblemStore
 from api.sessions import SessionSummary, elapsed_seconds, load_session, summary
 from corpus.publish import load_answer
-from schema import BugCategory, ClaimVerdict, OutcomeStatus, Severity, Source
+from schema import AssistantMode, BugCategory, ClaimVerdict, OutcomeStatus, Severity, Source
 
 router = APIRouter(prefix="/api/sessions", tags=["debrief"])
 
@@ -60,6 +60,7 @@ class DebriefAudit(BaseModel):
     question: str
     reply: str
     model: str
+    tokens: int | None
     verdict: ClaimVerdict | None
     """``None`` when the judge gave no valid label for this reply."""
     relied_on: bool
@@ -97,6 +98,8 @@ class DebriefTotals(BaseModel):
     relied_on_wrong: int
     seconds_used: int
     session_seconds: int
+    q_budget: int | None
+    """Constrained mode only."""
 
 
 class StatDelta(BaseModel):
@@ -222,6 +225,7 @@ async def debrief(
                 question=q.question,
                 reply=q.reply,
                 model=q.model,
+                tokens=q.tokens,
                 verdict=a.verdict if a else None,
                 relied_on=a.relied_on if a else False,
                 rationale=a.rationale if a else "",
@@ -245,6 +249,7 @@ async def debrief(
         relied_on_wrong=sum(a.relied_on for a in audit_items),
         seconds_used=round(elapsed_seconds(session, as_utc(session.submitted_at))),
         session_seconds=settings.session_minutes * 60,
+        q_budget=session.q_budget if session.mode == AssistantMode.CONSTRAINED else None,
     )
     return Debrief(
         session=summary(session),
