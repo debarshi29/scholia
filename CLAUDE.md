@@ -227,7 +227,7 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 - Check each dataset's actual field names and licence when you implement it. Do not assume them from this file.
 - **Sanitise** (`sanitise.py`): remove comments that mention the fix, TODO/FIXME/XXX on the bug's lines, and issue numbers. Never alter code semantics, and keep line numbers stable. Replace a removed comment line with an empty line rather than deleting it.
 - **One fix, one bug:** import-only changes are ignored, and the instance is kept only if the remaining changes form a single region (changed lines at most 10 apart) in one file. Fixes spread over several places are dropped as `fix_not_localised`, so every Tier 0 problem has exactly one bug in one file.
-- `--limit N` is the number of problems to **publish**; candidates are scanned in dataset order until N are kept. `--dry-run` runs every deterministic check and publishes nothing.
+- `--limit N` is the number of problems to **publish**; candidates are scanned round-robin across repos (one per repo in turn, each repo in dataset order) until N are kept, so a small build spans many projects. `--dry-run` runs every deterministic check and publishes nothing.
 - Patch hunk headers can be off from `base_commit` (git tolerates offsets), so changed lines are located by hunk content, not by header numbers. Lines end at `
 ` only (`str.splitlines()` also splits on form feeds).
 - Every build run writes a summary (candidates, kept, dropped by reason) to `data/logs/`.
