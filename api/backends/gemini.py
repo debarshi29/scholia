@@ -1,5 +1,9 @@
 """Gemini via ``google-genai`` (Realistic mode). The model name comes from config only."""
 
+import importlib
+import importlib.util
+
+import httpx
 from google import genai
 from google.genai import errors, types
 from tenacity import AsyncRetrying, retry_if_exception, stop_after_attempt, wait_exponential
@@ -8,8 +12,22 @@ from tenacity.wait import WaitBaseT
 from api.backends.base import TRANSIENT_STATUS, BackendError, ChatMessage
 
 
-def _transient(exc: BaseException) -> bool:
-    return isinstance(exc, errors.APIError) and exc.code in TRANSIENT_STATUS
+def _transport_errors() -> tuple[type[Exception], ...]:
+    """Connection-level failures. The SDK may run on ``httpx`` or its ``httpx2`` fork."""
+    found: list[type[Exception]] = [httpx.TransportError]
+    if importlib.util.find_spec("httpx2") is not None:
+        found.append(importlib.import_module("httpx2").TransportError)
+    return tuple(found)
+
+
+TRANSPORT_ERRORS = _transport_errors()
+
+
+def transient(exc: BaseException) -> bool:
+    """Worth retrying: rate limits, server errors and dropped connections."""
+    if isinstance(exc, errors.APIError):
+        return exc.code in TRANSIENT_STATUS
+    return isinstance(exc, TRANSPORT_ERRORS)
 
 
 class GeminiBackend:
@@ -46,7 +64,7 @@ class GeminiBackend:
         )
         try:
             async for attempt in AsyncRetrying(
-                retry=retry_if_exception(_transient),
+                retry=retry_if_exception(transient),
                 wait=self.wait,
                 stop=stop_after_attempt(self.attempts),
                 reraise=True,
@@ -55,6 +73,8 @@ class GeminiBackend:
                     resp = await self._generate(contents, config)
         except errors.APIError as exc:
             raise BackendError(f"gemini returned {exc.code}") from exc
+        except TRANSPORT_ERRORS as exc:
+            raise BackendError(f"gemini unreachable: {type(exc).__name__}") from exc
         text = resp.text
         if not text or not text.strip():
             raise BackendError("empty reply")

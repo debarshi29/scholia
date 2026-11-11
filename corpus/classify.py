@@ -12,7 +12,7 @@ from importlib import resources
 from typing import Protocol
 
 from google import genai
-from google.genai import errors, types
+from google.genai import types
 from pydantic import BaseModel, Field, ValidationError
 from tenacity import (
     retry,
@@ -21,6 +21,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from api.backends.gemini import TRANSPORT_ERRORS, transient
 from api.jsonout import parse_model_json
 from schema import BugCategory
 
@@ -73,10 +74,6 @@ def render(item: ClassifyInput) -> str:
     )
 
 
-def _transient(exc: BaseException) -> bool:
-    return isinstance(exc, errors.APIError) and (exc.code == 429 or exc.code >= 500)
-
-
 class GeminiClassifier:
     def __init__(self, api_key: str, model: str) -> None:
         if not model:
@@ -86,7 +83,7 @@ class GeminiClassifier:
         self.prompt_version, self._system = load_prompt()
 
     @retry(
-        retry=retry_if_exception(_transient),
+        retry=retry_if_exception(transient),
         wait=wait_exponential(multiplier=2, min=2, max=60),
         stop=stop_after_attempt(6),
         reraise=True,
@@ -108,7 +105,10 @@ class GeminiClassifier:
         prompt = render(item)
         last: Exception | None = None
         for _attempt in range(2):  # one retry on malformed output, then give up
-            raw = self._call(prompt)
+            try:
+                raw = self._call(prompt)
+            except TRANSPORT_ERRORS as exc:
+                raise ClassifyError(f"gemini unreachable: {type(exc).__name__}") from exc
             try:
                 return parse_model_json(raw, Classification)
             except ValidationError as exc:

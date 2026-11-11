@@ -64,3 +64,16 @@ def test_gives_up_after_one_retry(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_model_must_come_from_config() -> None:
     with pytest.raises(ClassifyError, match="JUDGE_MODEL"):
         GeminiClassifier(api_key="k", model="")
+
+
+def test_dropped_connection_is_a_classify_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+
+    c = GeminiClassifier(api_key="test-key", model="test-model")
+
+    def boom(prompt: str) -> str:
+        raise httpx.RemoteProtocolError("Server disconnected without sending a response.")
+
+    monkeypatch.setattr(c, "_call", boom)
+    with pytest.raises(ClassifyError, match="unreachable"):
+        c.classify(ITEM)

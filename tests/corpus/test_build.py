@@ -4,7 +4,7 @@ from typing import cast
 
 import pytest
 
-from corpus.build import BuildLog, main, run
+from corpus.build import BuildLog, main, round_robin, run
 from corpus.classify import Classification, ClassifyError, ClassifyInput
 from corpus.publish import load_answer
 from corpus.repos import CheckoutError, LicenceResolver, RepoCache
@@ -235,3 +235,17 @@ def test_main_requires_gemini_config(monkeypatch: pytest.MonkeyPatch, tmp_path: 
         assert main(["--tier", "0", "--source", "swebench", "--limit", "1"]) == 2
     finally:
         get_settings.cache_clear()
+
+
+def test_round_robin_spreads_a_small_build_over_repos() -> None:
+    cands = [
+        _cand("a1", repo="a/a"),
+        _cand("a2", repo="a/a"),
+        _cand("a3", repo="a/a"),
+        _cand("b1", repo="b/b"),
+        _cand("c1", repo="c/c"),
+        _cand("c2", repo="c/c"),
+    ]
+    order = [c.upstream_id for c in round_robin(cands)]
+    assert order == ["a1", "b1", "c1", "a2", "c2", "a3"]
+    assert round_robin([]) == []

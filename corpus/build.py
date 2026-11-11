@@ -201,6 +201,18 @@ def to_draft(p: Prepared, classifier: Classifier, tier: int) -> Draft:
     )
 
 
+def round_robin(candidates: Iterable[Candidate]) -> list[Candidate]:
+    """One candidate per repo in turn (repos in first-seen order, each repo's own order
+    kept), so a small build spans many projects instead of the dataset's first repo."""
+    by_repo: dict[str, list[Candidate]] = {}
+    for cand in candidates:
+        by_repo.setdefault(cand.repo, []).append(cand)
+    out: list[Candidate] = []
+    for i in range(max((len(v) for v in by_repo.values()), default=0)):
+        out.extend(group[i] for group in by_repo.values() if i < len(group))
+    return out
+
+
 def run(
     candidates: Iterable[Candidate],
     *,
@@ -212,7 +224,7 @@ def run(
 ) -> list[Published]:
     """Scan candidates until ``build_log.limit`` are kept. ``classifier=None`` is a dry run."""
     published: list[Published] = []
-    for cand in candidates:
+    for cand in round_robin(candidates):
         if len(build_log.kept) >= build_log.limit:
             break
         build_log.candidates_seen += 1
