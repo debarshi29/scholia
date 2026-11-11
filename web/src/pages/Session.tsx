@@ -1,4 +1,5 @@
-// Session: file tree, read-only code viewer, assistant panel and the report form.
+// Session board: top bar (problem, timer, mode, submit), files and session rules on the
+// left, the code in the centre with the report draft under it, the assistant on the right.
 // The timer is display only: the server owns the clock and decides overtime at submit.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -6,9 +7,9 @@ import { api, type SessionView } from "../api/client";
 import AssistantPanel, { type Selection } from "../components/AssistantPanel";
 import CodeViewer, { type LineRange } from "../components/CodeViewer";
 import ReportForm, { findingProblem } from "../components/ReportForm";
-import { Badge, Button, errorText, Loading, Notice } from "../components/ui";
-import { baseName, clock, lineRange } from "../lib/format";
-import { navigate } from "../router";
+import { Button, errorText, Loading, Notice, Segmented } from "../components/ui";
+import { baseName, clock, lref, plural, problemTitle } from "../lib/format";
+import { Link, navigate } from "../router";
 import { useDraft, useDraftStore, type DraftFinding } from "../store/draft";
 
 function Timer({ session, syncedAt }: { session: SessionView; syncedAt: number }) {
@@ -23,52 +24,17 @@ function Timer({ session, syncedAt }: { session: SessionView; syncedAt: number }
     <div
       role="timer"
       aria-label={over ? "Time is up" : `Time left: ${clock(left)}`}
-      className={`flex items-baseline gap-2 font-mono ${over ? "text-coral" : "text-amber"}`}
+      className="flex items-baseline gap-3"
     >
-      <span className="text-xl font-medium tabular-nums">{clock(left)}</span>
-      {over && <span className="text-[12px] uppercase">Overtime</span>}
+      <span
+        className={`font-mono text-[2rem] leading-none font-medium tabular-nums ${over ? "text-coral" : "text-amber"}`}
+      >
+        {clock(left)}
+      </span>
+      <span className={`text-[13px] ${over ? "text-coral" : "text-mute"}`}>
+        {over ? "overtime" : `left of ${clock(session.session_seconds)}`}
+      </span>
     </div>
-  );
-}
-
-function FileTree(props: {
-  files: string[];
-  active: string;
-  flags: Record<string, number>;
-  onOpen: (path: string) => void;
-}) {
-  return (
-    <nav aria-label="Files" className="min-h-0 overflow-y-auto border-r border-line bg-panel">
-      <h2 className="flex min-h-11 items-center border-b border-line px-3 text-[13px] font-semibold tracking-wide text-mute uppercase">
-        Files
-      </h2>
-      <ul className="p-1.5">
-        {props.files.map((path) => {
-          const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
-          const current = path === props.active;
-          const flags = props.flags[path] ?? 0;
-          return (
-            <li key={path}>
-              <button
-                type="button"
-                aria-current={current ? "true" : undefined}
-                onClick={() => props.onOpen(path)}
-                title={path}
-                className={`flex min-h-11 w-full flex-col justify-center rounded-md px-2 text-left ${
-                  current ? "bg-cyan/10 text-ink" : "text-mute hover:bg-raised hover:text-ink"
-                }`}
-              >
-                <span className="flex items-center justify-between gap-2">
-                  <span className="truncate font-mono text-[13px]">{baseName(path)}</span>
-                  {flags > 0 && <Badge tone="coral">{flags}</Badge>}
-                </span>
-                {dir && <span className="truncate font-mono text-[11px] opacity-70">{dir}</span>}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
   );
 }
 
@@ -81,24 +47,28 @@ function SubmitControl(props: {
   const [confirming, setConfirming] = useState(false);
   if (!confirming) {
     return (
-      <div className="flex items-center gap-3">
-        {props.blocker && <span className="text-[13px] text-amber">{props.blocker}</span>}
-        <Button tone="green" disabled={props.blocker !== null} onClick={() => setConfirming(true)}>
-          Submit report
-        </Button>
-      </div>
+      <Button
+        className="min-h-12 px-5 text-base font-semibold"
+        disabled={props.blocker !== null}
+        title={props.blocker ?? undefined}
+        onClick={() => setConfirming(true)}
+      >
+        Submit report →
+      </Button>
     );
   }
   return (
     <div className="flex items-center gap-2" role="group" aria-label="Confirm submit">
-      <span className="text-[13px]">
-        Submit {props.count === 0 ? "with no findings" : `${props.count} finding${props.count === 1 ? "" : "s"}`}
-        ? You cannot change it afterwards.
-      </span>
-      <Button tone="green" disabled={props.pending} onClick={props.onSubmit}>
-        {props.pending ? "Submitting…" : "Submit now"}
+      <Button
+        className="min-h-12 px-5 text-base font-semibold"
+        disabled={props.pending}
+        onClick={props.onSubmit}
+      >
+        {props.pending
+          ? "Submitting…"
+          : `Submit ${props.count === 0 ? "with no findings" : plural(props.count, "finding")}`}
       </Button>
-      <Button tone="mute" variant="outline" onClick={() => setConfirming(false)}>
+      <Button tone="mute" variant="outline" className="min-h-12" onClick={() => setConfirming(false)}>
         Keep working
       </Button>
     </div>
@@ -107,6 +77,7 @@ function SubmitControl(props: {
 
 function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: number }) {
   const id = session.id;
+  const constrained = session.mode === "constrained";
   const queryClient = useQueryClient();
   const settings = useQuery({ queryKey: ["settings"], queryFn: api.settings, staleTime: Infinity });
   const draft = useDraft(id);
@@ -128,20 +99,20 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
     }
     return counts;
   }, [session.files]);
+  const totalLines = Object.values(lineCounts).reduce((a, b) => a + b, 0);
 
-  const flagCounts: Record<string, number> = {};
-  for (const f of draft.findings) flagCounts[f.file] = (flagCounts[f.file] ?? 0) + 1;
   const flagged = draft.findings
-    .filter((f) => f.file === active?.path && f.line_from >= 1 && f.line_to >= f.line_from)
-    .map((f) => ({ from: f.line_from, to: Math.min(f.line_to, lineCounts[f.file] ?? f.line_to) }));
-
+    .filter((f) => f.file === active?.path)
+    .map((f) => ({ from: f.line_from, to: f.line_to }));
   const selection: Selection | null =
     active && range ? { file: active.path, from: range.from, to: range.to } : null;
 
   const firstProblem = draft.findings
-    .map((f, i) => ({ i, problem: findingProblem(f, lineCounts) }))
+    .map((f) => ({ f, problem: findingProblem(f) }))
     .find((x) => x.problem !== null);
-  const blocker = firstProblem ? `Finding #${firstProblem.i + 1}: ${firstProblem.problem}` : null;
+  const blocker = firstProblem
+    ? `${baseName(firstProblem.f.file)} ${lref(firstProblem.f.line_from, firstProblem.f.line_to)}: ${firstProblem.problem}`
+    : null;
 
   const submit = useMutation({
     mutationFn: () =>
@@ -172,71 +143,128 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
     setReveal({ line: f.line_from, nonce: Date.now() });
   };
   const flag = () => {
-    if (!selection) return;
-    setFocusKey(addFinding(id, selection.file, selection.from, selection.to));
+    if (selection) setFocusKey(addFinding(id, selection.file, selection.from, selection.to));
   };
 
   if (!active) return <Notice tone="coral">This problem has no files.</Notice>;
 
   return (
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)]">
-      <header className="flex min-h-14 flex-wrap items-center justify-between gap-4 border-b border-line bg-panel px-4 py-1.5">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-base font-medium">{session.problem_id}</span>
-          <Badge tone={session.mode === "constrained" ? "cyan" : "amber"}>
-            {session.mode === "constrained" ? "Constrained" : "Realistic"}
-          </Badge>
-          <Timer session={session} syncedAt={syncedAt} />
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-line bg-panel px-6 py-3">
+        <div className="flex min-w-0 items-center gap-6">
+          <Link to="/" className="flex min-h-11 items-center text-mute hover:text-ink">
+            ← Library
+          </Link>
+          <div className="min-w-0">
+            <p className="text-[12px] tracking-widest text-mute uppercase">
+              Problem {session.problem_id} · Python · Unfamiliar codebase
+            </p>
+            <h1 className="truncate text-lg font-semibold">
+              {problemTitle(
+                session.origin_repo,
+                session.files.map((f) => f.path),
+              )}
+            </h1>
+            <p className="text-[13px] text-mute">
+              {plural(session.files.length, "file")} · {totalLines} lines
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-wrap items-center gap-5">
+          <Timer session={session} syncedAt={syncedAt} />
+          <Segmented
+            label="Assistant mode for this session"
+            value={session.mode}
+            tone={constrained ? "cyan" : "amber"}
+            options={[
+              { value: "constrained", label: "Constrained · local" },
+              { value: "realistic", label: "Realistic · Gemini" },
+            ]}
+          />
           <SubmitControl
             count={draft.findings.length}
             blocker={blocker}
             pending={submit.isPending}
             onSubmit={() => submit.mutate()}
           />
-          {submit.isError && <Notice tone="coral">{errorText(submit.error)}</Notice>}
         </div>
+        {(blocker || submit.isError) && (
+          <p className="w-full text-right text-[13px] text-amber" role="status">
+            {submit.isError ? errorText(submit.error) : `Before you submit: ${blocker}.`}
+          </p>
+        )}
       </header>
 
-      <div className="grid min-h-0 grid-cols-[13rem_minmax(0,1fr)_23rem]">
-        <FileTree
-          files={session.files.map((f) => f.path)}
-          active={active.path}
-          flags={flagCounts}
-          onOpen={open}
-        />
+      <div className="grid min-h-0 grid-cols-[15rem_minmax(0,1fr)_25rem]">
+        <nav aria-label="Files" className="min-h-0 overflow-y-auto border-r border-line bg-panel p-3.5">
+          <h2 className="px-3 pt-3 pb-2 text-[12px] tracking-widest text-mute uppercase">Files</h2>
+          <ul className="flex flex-col gap-1.5">
+            {session.files.map((f) => {
+              const current = f.path === active.path;
+              return (
+                <li key={f.path}>
+                  <button
+                    type="button"
+                    aria-current={current ? "true" : undefined}
+                    onClick={() => open(f.path)}
+                    title={f.path}
+                    className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-3 text-left font-mono text-[13px] ${
+                      current ? "bg-raised text-ink" : "text-mute hover:bg-raised/60 hover:text-ink"
+                    }`}
+                  >
+                    <span className="truncate">{baseName(f.path)}</span>
+                    <span className="text-mute">{lineCounts[f.path]}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <section className="mt-4 rounded-lg bg-raised px-3.5 py-4 text-[13px] leading-relaxed text-mute">
+            <h2 className="mb-2 text-[12px] tracking-widest uppercase">Session rules</h2>
+            {constrained ? (
+              <>
+                <p>
+                  The assistant sees only the lines you select. Window:{" "}
+                  {session.ctx_cap.toLocaleString()} tokens.
+                </p>
+                <p className="mt-2">{session.q_budget} questions per session.</p>
+              </>
+            ) : (
+              <>
+                <p>The assistant sees the whole file you are in.</p>
+                <p className="mt-2">No question limit.</p>
+              </>
+            )}
+            <p className="mt-2">No test runner. Read, reason, report.</p>
+          </section>
+        </nav>
 
         <div className="grid min-h-0 grid-rows-[auto_minmax(0,3fr)_minmax(0,2fr)]">
-          <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-line px-3 py-1">
-            <span className="truncate font-mono text-[13px] text-mute" title={active.path}>
-              {active.path}
-              <span className="text-ink">
-                {range ? ` · ${lineRange(range.from, range.to)} selected` : ""}
-              </span>
-            </span>
-            <span className="flex gap-2">
-              <Button
-                compact
-                variant="outline"
-                tone={session.mode === "constrained" ? "cyan" : "amber"}
-                disabled={session.mode === "constrained" && !selection}
-                title={selection ? undefined : "Select lines in the code first"}
-                onClick={() => questionRef.current?.focus()}
-              >
-                Ask assistant
-              </Button>
-              <Button
-                compact
-                variant="outline"
-                tone="coral"
-                disabled={!selection}
-                title={selection ? undefined : "Select lines in the code first"}
-                onClick={flag}
-              >
-                Flag as bug
-              </Button>
-            </span>
+          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-line bg-panel px-6 py-2">
+            <p className="flex items-baseline gap-4" title={active.path}>
+              <span className="font-mono">{baseName(active.path)}</span>
+              <span className="text-[13px] text-mute">{lineCounts[active.path]} lines</span>
+            </p>
+            {selection ? (
+              <p className="flex items-center gap-3">
+                <span className="font-mono text-[13px]">
+                  {lref(selection.from, selection.to)} selected
+                </span>
+                <Button compact variant="outline" onClick={() => questionRef.current?.focus()}>
+                  Ask assistant
+                </Button>
+                <Button compact variant="outline" tone="coral" onClick={flag}>
+                  Flag as bug
+                </Button>
+              </p>
+            ) : (
+              <p className="text-[13px] text-mute">
+                Click a line number, then another, to select a range.{" "}
+                {constrained
+                  ? "The assistant sees only what you send it."
+                  : "Then ask about it or flag it as a bug."}
+              </p>
+            )}
           </div>
           <div className="min-h-0">
             <CodeViewer
@@ -247,7 +275,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
               reveal={reveal}
             />
           </div>
-          <ReportForm sessionId={id} lineCounts={lineCounts} focusKey={focusKey} onJump={jump} />
+          <ReportForm sessionId={id} focusKey={focusKey} onJump={jump} />
         </div>
 
         <AssistantPanel
