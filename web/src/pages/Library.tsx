@@ -1,4 +1,4 @@
-// Library: weak-spot bars, source filters, problem cards and the session setup panel.
+// Library board: weak spots, source filter, problem cards and the session setup panel.
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -7,54 +7,77 @@ import {
   type CategoryStat,
   type LibrarySettings,
   type ProblemCard,
-  type SessionSummary,
   type Source,
 } from "../api/client";
-import { Badge, Button, errorText, INPUT, Loading, Notice, Panel } from "../components/ui";
-import { CATEGORY_LABEL, percent, shortDate, SOURCE_LABEL } from "../lib/format";
+import { Button, errorText, Loading, Notice, Segmented } from "../components/ui";
+import {
+  CATEGORY_LABEL,
+  percent,
+  plural,
+  problemTitle,
+  rateTone,
+  SOURCE_LABEL,
+} from "../lib/format";
 import { Link, navigate } from "../router";
 
 type SourceFilter = Source | "all";
 
+const BAR = { coral: "bg-coral", amber: "bg-amber", green: "bg-green" } as const;
+const SOURCE_TEXT: Record<Source, string> = { swebench: "text-cyan", bugsinpy: "text-amber" };
+
 function WeakSpots({ stats }: { stats: CategoryStat[] }) {
-  const attempted = stats.some((s) => s.attempts > 0);
+  const seen = stats
+    .filter((s) => s.attempts > 0)
+    .sort((a, b) => (b.miss_rate ?? 0) - (a.miss_rate ?? 0));
+  const sessions = seen.reduce((n, s) => n + s.attempts, 0);
   return (
-    <Panel title="Weak spots" aside={<span className="text-[12px] text-mute">miss rate</span>}>
-      {!attempted && (
-        <p className="mb-3 text-[13px] text-mute">
-          No sessions graded yet. After each debrief, the categories you miss most show up here
-          and get picked more often.
+    <section className="rounded-xl border border-line bg-panel px-6 py-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-base font-semibold">Your weak spots</h2>
+        <p className="text-[13px] text-mute">
+          {seen.length > 0
+            ? `Share of key bugs you missed, ${plural(sessions, "graded bug")} so far`
+            : "Share of key bugs you missed"}
         </p>
-      )}
-      <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
-        {stats.map((s) => {
-          const rate = s.miss_rate ?? 0;
-          return (
-            <li key={s.category} className="grid grid-cols-[9.5rem_1fr_5.5rem] items-center gap-3">
-              <span className="truncate text-[13px]">{CATEGORY_LABEL[s.category]}</span>
-              <span
-                className="h-2 overflow-hidden rounded-full bg-raised"
-                role="img"
-                aria-label={
-                  s.attempts > 0
-                    ? `${CATEGORY_LABEL[s.category]}: missed ${s.misses} of ${s.attempts}`
-                    : `${CATEGORY_LABEL[s.category]}: not attempted yet`
-                }
-              >
+      </div>
+      {seen.length === 0 ? (
+        <p className="mt-3 text-mute">
+          Nothing graded yet. After your first debrief, the kinds of bug you miss most show up
+          here, and problems that match them come first.
+        </p>
+      ) : (
+        <ul className="mt-4 flex flex-col gap-3.5">
+          {seen.map((s) => {
+            const rate = s.miss_rate ?? 0;
+            return (
+              <li key={s.category} className="grid grid-cols-[12rem_1fr_3rem] items-center gap-4">
+                <span>{CATEGORY_LABEL[s.category]}</span>
                 <span
-                  className="block h-full rounded-full bg-coral"
-                  style={{ width: `${Math.round(rate * 100)}%` }}
-                />
-              </span>
-              <span className="text-right font-mono text-[12px] text-mute">
-                {s.attempts > 0 ? `${percent(s.miss_rate)} · ${s.misses}/${s.attempts}` : "no data"}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </Panel>
+                  className="h-1.5 overflow-hidden rounded-full bg-raised"
+                  role="img"
+                  aria-label={`${CATEGORY_LABEL[s.category]}: missed ${s.misses} of ${s.attempts}`}
+                >
+                  <span
+                    className={`block h-full rounded-full ${BAR[rateTone(rate)]}`}
+                    style={{ width: `${Math.max(rate * 100, rate > 0 ? 2 : 0)}%` }}
+                  />
+                </span>
+                <span className="text-right font-mono text-[13px] text-mute">{percent(rate)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
+}
+
+function result(p: ProblemCard): string {
+  if (p.best_found != null && p.best_bugs != null) {
+    const minutes = Math.max(1, Math.round((p.best_seconds ?? 0) / 60));
+    return `Best ${p.best_found} of ${plural(p.best_bugs, "bug")} · ${minutes} min`;
+  }
+  return p.attempts > 0 ? "Started, not finished" : "Not attempted";
 }
 
 function Card(props: { problem: ProblemCard; selected: boolean; onSelect: () => void }) {
@@ -64,189 +87,182 @@ function Card(props: { problem: ProblemCard; selected: boolean; onSelect: () => 
       type="button"
       aria-pressed={props.selected}
       onClick={props.onSelect}
-      className={`flex min-h-11 flex-col gap-2 rounded-lg border p-3 text-left transition ${
-        props.selected ? "border-cyan bg-cyan/5" : "border-line bg-panel hover:border-mute/60"
+      className={`flex flex-col gap-3 rounded-xl border px-6 py-5 text-left transition ${
+        props.selected ? "border-cyan bg-raised" : "border-line bg-panel hover:border-mute/50"
       }`}
     >
       <span className="flex items-center justify-between gap-2">
-        <span className="font-mono font-medium">{p.id}</span>
-        <Badge tone={p.source === "swebench" ? "cyan" : "amber"}>{SOURCE_LABEL[p.source]}</Badge>
+        <span className="font-mono text-[13px] text-mute">{p.id}</span>
+        <span
+          className={`rounded bg-bg px-2 py-1 font-mono text-[12px] leading-none tracking-wider uppercase ${SOURCE_TEXT[p.source]}`}
+        >
+          {SOURCE_LABEL[p.source]}
+        </span>
       </span>
-      <span className="truncate text-[13px] text-mute">{p.origin_repo}</span>
-      <span className="truncate font-mono text-[12px]" title={p.files.join("\n")}>
-        {p.files.join(", ")}
+      <span className="truncate text-lg font-semibold" title={p.files.join("\n")}>
+        {problemTitle(p.origin_repo, p.files)}
       </span>
-      <span className="flex items-center justify-between font-mono text-[12px] text-mute">
-        <span>{p.lines} lines</span>
-        <span>{p.attempts === 0 ? "not attempted" : `${p.attempts}× · ${shortDate(p.last_attempt_at)}`}</span>
+      <span className="text-[13px] text-mute">
+        Python · {plural(p.files.length, "file")} · {p.lines} lines
       </span>
+      <span className="text-[13px] text-mute">{result(p)}</span>
     </button>
   );
 }
 
-function Setup(props: { settings: LibrarySettings; selected: ProblemCard | null; source: SourceFilter }) {
+function Stepper(props: {
+  label: string;
+  value: number;
+  display: string;
+  step: number;
+  min: number;
+  max: number;
+  disabled: boolean;
+  onChange: (value: number) => void;
+}) {
+  const { label, value, step, min, max, disabled, onChange } = props;
+  const button =
+    "flex size-11 items-center justify-center rounded-lg border border-line bg-bg text-lg hover:border-mute/60 disabled:cursor-not-allowed disabled:opacity-40";
+  return (
+    <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+      <span>{label}</span>
+      <span className="flex items-center gap-2">
+        <button
+          type="button"
+          className={button}
+          aria-label={`Decrease ${label.toLowerCase()}`}
+          disabled={disabled || value - step < min}
+          onClick={() => onChange(value - step)}
+        >
+          −
+        </button>
+        <output className="w-24 text-center font-mono" aria-live="polite">
+          {props.display}
+        </output>
+        <button
+          type="button"
+          className={button}
+          aria-label={`Increase ${label.toLowerCase()}`}
+          disabled={disabled || value + step > max}
+          onClick={() => onChange(value + step)}
+        >
+          +
+        </button>
+      </span>
+    </div>
+  );
+}
+
+function Setup(props: {
+  settings: LibrarySettings;
+  selected: ProblemCard | null;
+  source: SourceFilter;
+}) {
   const { settings, selected, source } = props;
   const [mode, setMode] = useState<AssistantMode>("constrained");
-  const [ctxCap, setCtxCap] = useState(String(settings.default_ctx_cap));
-  const [budget, setBudget] = useState(String(settings.default_q_budget));
+  const [ctxCap, setCtxCap] = useState(settings.default_ctx_cap);
+  const [budget, setBudget] = useState(settings.default_q_budget);
+  const constrained = mode === "constrained";
+  const info = settings.modes.find((m) => m.mode === mode);
+  const realistic = settings.modes.find((m) => m.mode === "realistic");
   const start = useMutation({
     mutationFn: () =>
       api.createSession({
         problem_id: selected?.id ?? null,
         source: selected || source === "all" ? null : source,
         mode,
-        ctx_cap: Number(ctxCap),
-        q_budget: Number(budget),
+        ctx_cap: ctxCap,
+        q_budget: budget,
       }),
     onSuccess: (view) => navigate(`/session/${view.id}`),
   });
-  const capOk = Number.isInteger(Number(ctxCap)) && Number(ctxCap) > 0;
-  const budgetOk = Number.isInteger(Number(budget)) && Number(budget) >= 0;
-  const constrained = mode === "constrained";
 
   return (
-    <Panel title="Session setup">
+    <aside className="h-fit rounded-xl border border-line bg-panel px-7 py-7">
       <form
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-5"
         onSubmit={(e) => {
           e.preventDefault();
           start.mutate();
         }}
       >
         <div>
-          <p className="text-[12px] text-mute uppercase">Problem</p>
-          <p className="mt-1">
-            {selected ? (
-              <>
-                <span className="font-mono font-medium">{selected.id}</span>
-                <span className="text-mute"> · {selected.origin_repo}</span>
-              </>
-            ) : (
-              <>
-                Picked for you
-                <span className="text-mute">
-                  {" "}
-                  · weighted by your weak spots
-                  {source !== "all" && `, from ${SOURCE_LABEL[source]}`}
-                </span>
-              </>
-            )}
+          <p className="text-[12px] tracking-widest text-mute uppercase">Session setup</p>
+          <h2 className="mt-2 text-xl font-semibold">
+            {selected ? problemTitle(selected.origin_repo, selected.files) : "Picked for you"}
+          </h2>
+          <p className="mt-1 text-[13px] text-mute">
+            {selected
+              ? `${selected.id} · Python · ${plural(selected.files.length, "file")} · ${selected.lines} lines`
+              : `Weighted by your weak spots${source === "all" ? "" : `, from ${SOURCE_LABEL[source]}`}. Or choose a card.`}
           </p>
         </div>
 
-        <fieldset>
-          <legend className="text-[12px] text-mute uppercase">Assistant</legend>
-          <div className="mt-1 flex flex-col gap-2">
-            {settings.modes.map((m) => {
-              const realistic = m.mode === "realistic";
-              const checked = mode === m.mode;
-              return (
-                <label
-                  key={m.mode}
-                  className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-md border px-3 py-2 ${
-                    checked ? (realistic ? "border-amber bg-amber/5" : "border-cyan bg-cyan/5") : "border-line"
-                  } ${m.available ? "" : "cursor-not-allowed opacity-50"}`}
-                >
-                  <input
-                    type="radio"
-                    name="mode"
-                    className="mt-1 accent-current"
-                    checked={checked}
-                    disabled={!m.available}
-                    onChange={() => setMode(m.mode)}
-                  />
-                  <span>
-                    <span className={`font-medium ${realistic ? "text-amber" : "text-cyan"}`}>
-                      {realistic ? "Realistic" : "Constrained"}
-                    </span>
-                    <span className="block text-[13px] text-mute">
-                      {realistic
-                        ? m.available
-                          ? `${m.model}: sees the whole file, no budget.`
-                          : "Needs a Gemini key and model in .env."
-                        : `${m.model}: sees only the lines you select.`}
-                    </span>
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </fieldset>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="text-[12px] text-mute uppercase">Context cap (tokens)</span>
-            <input
-              className={`${INPUT} font-mono`}
-              inputMode="numeric"
-              value={ctxCap}
-              disabled={!constrained}
-              aria-invalid={!capOk}
-              onChange={(e) => setCtxCap(e.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-[12px] text-mute uppercase">Question budget</span>
-            <input
-              className={`${INPUT} font-mono`}
-              inputMode="numeric"
-              value={budget}
-              disabled={!constrained}
-              aria-invalid={!budgetOk}
-              onChange={(e) => setBudget(e.target.value)}
-            />
-          </label>
+        <div className="flex flex-col gap-3">
+          <p className="font-semibold">Assistant</p>
+          <Segmented
+            label="Assistant mode"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "constrained", label: "Constrained" },
+              {
+                value: "realistic",
+                label: "Realistic",
+                disabled: !realistic?.available,
+                title: realistic?.available ? undefined : "Needs a Gemini key and model in .env",
+              },
+            ]}
+          />
+          <p className="text-[13px] leading-relaxed text-mute">
+            {constrained
+              ? "A small local model with a tight window. You choose what it sees and spend a limited number of questions. Trains scoping and verification."
+              : "A capable cloud model that sees the whole file, with no question limit. Trains checking an assistant that does not fail loudly."}
+          </p>
         </div>
 
-        <p className="text-[13px] text-mute">
-          {settings.session_minutes} minutes on the server clock. You can submit late; it is
-          flagged as overtime.
-        </p>
-        {start.isError && <Notice tone="coral">{errorText(start.error)}</Notice>}
-        <Button
-          type="submit"
-          tone={constrained ? "cyan" : "amber"}
-          disabled={start.isPending || !capOk || !budgetOk}
-        >
-          {start.isPending ? "Starting…" : "Start session"}
-        </Button>
-      </form>
-    </Panel>
-  );
-}
+        <div className="flex flex-col gap-4 rounded-lg bg-raised px-5 py-5">
+          <Stepper
+            label="Context window"
+            value={ctxCap}
+            display={constrained ? `${ctxCap.toLocaleString()} tok` : "whole file"}
+            step={512}
+            min={512}
+            max={32768}
+            disabled={!constrained}
+            onChange={setCtxCap}
+          />
+          <Stepper
+            label="Questions"
+            value={budget}
+            display={constrained ? String(budget) : "no limit"}
+            step={1}
+            min={0}
+            max={50}
+            disabled={!constrained}
+            onChange={setBudget}
+          />
+          <div className="flex items-center justify-between">
+            <span>Timer</span>
+            <span className="font-mono">{settings.session_minutes}:00</span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span>Model</span>
+            <span className="truncate font-mono text-[13px]">
+              {info?.model} · {constrained ? "local" : "cloud"}
+            </span>
+          </div>
+        </div>
 
-function Recent({ sessions }: { sessions: SessionSummary[] }) {
-  if (sessions.length === 0) return null;
-  return (
-    <Panel title="Recent sessions" bodyClassName="p-2">
-      <ul>
-        {sessions.slice(0, 8).map((s) => {
-          const live = !s.submitted_at;
-          return (
-            <li key={s.id}>
-              <Link
-                to={live ? `/session/${s.id}` : `/debrief/${s.id}`}
-                className="flex min-h-11 items-center justify-between gap-3 rounded-md px-2 hover:bg-raised"
-              >
-                <span>
-                  <span className="font-mono">{s.problem_id}</span>
-                  <span className="text-[13px] text-mute"> · {shortDate(s.started_at)}</span>
-                </span>
-                {live ? (
-                  <Badge tone="amber">Resume</Badge>
-                ) : s.graded ? (
-                  <Badge tone="green">Debrief</Badge>
-                ) : (
-                  <Badge tone={s.grade_error ? "coral" : "mute"}>
-                    {s.grade_error ? "Grading failed" : "Grading"}
-                  </Badge>
-                )}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </Panel>
+        {start.isError && <Notice tone="coral">{errorText(start.error)}</Notice>}
+        <Button type="submit" className="min-h-14 text-base font-semibold" disabled={start.isPending}>
+          {start.isPending ? "Starting…" : `Start ${settings.session_minutes}-minute session`}
+        </Button>
+        <p className="text-[13px] text-mute">
+          The answer key stays hidden until you submit your report.
+        </p>
+      </form>
+    </aside>
   );
 }
 
@@ -256,77 +272,110 @@ export default function Library() {
   const settings = useQuery({ queryKey: ["settings"], queryFn: api.settings });
   const sessions = useQuery({ queryKey: ["sessions"], queryFn: api.sessions });
   const [source, setSource] = useState<SourceFilter>("all");
-  const [freshOnly, setFreshOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const lastDebrief = sessions.data?.find((s) => s.graded);
+  const resume = sessions.data?.find((s) => !s.submitted_at);
+  const header = (
+    <header className="flex min-h-16 items-center justify-between gap-4 border-b border-line bg-panel px-6">
+      <div className="flex items-baseline gap-5">
+        <span className="font-mono text-lg text-cyan">scholia</span>
+        <span className="text-[13px] text-mute">code comprehension practice</span>
+      </div>
+      <nav className="flex items-center gap-2">
+        {resume && (
+          <Link
+            to={`/session/${resume.id}`}
+            className="flex min-h-11 items-center rounded-md px-3 text-amber hover:bg-raised"
+          >
+            Resume {resume.problem_id}
+          </Link>
+        )}
+        {lastDebrief && (
+          <Link
+            to={`/debrief/${lastDebrief.id}`}
+            className="flex min-h-11 items-center rounded-md px-3 text-mute hover:bg-raised hover:text-ink"
+          >
+            Last debrief
+          </Link>
+        )}
+      </nav>
+    </header>
+  );
 
   const failed = [problems, stats, settings].find((q) => q.isError);
   if (failed) {
     return (
-      <div className="p-6">
-        <Notice tone="coral">{errorText(failed.error)}</Notice>
-      </div>
+      <>
+        {header}
+        <div className="p-6">
+          <Notice tone="coral">{errorText(failed.error)}</Notice>
+        </div>
+      </>
     );
   }
-  if (!problems.data || !stats.data || !settings.data) return <Loading />;
+  if (!problems.data || !stats.data || !settings.data) {
+    return (
+      <>
+        {header}
+        <Loading />
+      </>
+    );
+  }
 
-  const visible = problems.data.filter(
-    (p) => (source === "all" || p.source === source) && (!freshOnly || p.attempts === 0),
-  );
+  const visible = problems.data.filter((p) => source === "all" || p.source === source);
   const selected = visible.find((p) => p.id === selectedId) ?? null;
   const filters: { value: SourceFilter; label: string }[] = [
-    { value: "all", label: "All sources" },
+    { value: "all", label: "All" },
     { value: "swebench", label: SOURCE_LABEL.swebench },
     { value: "bugsinpy", label: SOURCE_LABEL.bugsinpy },
   ];
 
   return (
-    <div className="mx-auto grid max-w-[1400px] gap-4 p-4 lg:grid-cols-[1fr_22rem]">
-      <div className="flex min-w-0 flex-col gap-4">
-        <WeakSpots stats={stats.data} />
-        <Panel
-          title={`Problems · ${visible.length}`}
-          aside={
-            <div className="flex flex-wrap items-center gap-2 py-1.5">
-              <div role="group" aria-label="Source" className="flex gap-1">
-                {filters.map((f) => (
-                  <button
-                    key={f.value}
-                    type="button"
-                    aria-pressed={source === f.value}
-                    onClick={() => setSource(f.value)}
-                    className={`min-h-11 rounded-md border px-3 text-[13px] ${
-                      source === f.value
-                        ? "border-cyan bg-cyan/10 text-cyan"
-                        : "border-line text-mute hover:text-ink"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-              <label className="flex min-h-11 cursor-pointer items-center gap-2 px-1 text-[13px] text-mute">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-cyan"
-                  checked={freshOnly}
-                  onChange={(e) => setFreshOnly(e.target.checked)}
-                />
-                Not attempted
-              </label>
-            </div>
-          }
-        >
+    <>
+      {header}
+      <div className="mx-auto grid max-w-[1500px] gap-6 px-6 py-7 lg:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <div>
+            <h1 className="text-3xl font-semibold">Pick a problem</h1>
+            <p className="mt-2 text-mute">
+              Each one is a real file you have not seen, with a bug you have to find. Problems
+              that match your weak spots come first.
+            </p>
+          </div>
+
+          <WeakSpots stats={stats.data} />
+
+          <div role="group" aria-label="Source" className="flex flex-wrap items-center gap-2.5">
+            <span className="mr-1 text-[13px] text-mute">Source</span>
+            {filters.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                aria-pressed={source === f.value}
+                onClick={() => setSource(f.value)}
+                className={`min-h-11 rounded-full px-5 font-semibold transition ${
+                  source === f.value
+                    ? "bg-cyan text-bg"
+                    : "border border-line text-ink hover:border-mute/60"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
           {problems.data.length === 0 ? (
-            <p className="text-mute">
+            <Notice>
               No problems are published yet. Build the corpus first:{" "}
               <code className="font-mono text-ink">
-                uv run python -m corpus.build --tier 0 --source swebench --limit 20
+                python -m corpus.build --tier 0 --source swebench --limit 20
               </code>
-            </p>
+            </Notice>
           ) : visible.length === 0 ? (
-            <p className="text-mute">No problems match these filters.</p>
+            <p className="text-mute">No problems from this source.</p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {visible.map((p) => (
                 <Card
                   key={p.id}
@@ -337,12 +386,9 @@ export default function Library() {
               ))}
             </div>
           )}
-        </Panel>
-      </div>
-      <aside className="flex flex-col gap-4">
+        </div>
         <Setup settings={settings.data} selected={selected} source={source} />
-        <Recent sessions={sessions.data ?? []} />
-      </aside>
-    </div>
+      </div>
+    </>
   );
 }
