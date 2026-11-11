@@ -235,7 +235,7 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 - Every build run writes a summary (candidates, kept, dropped by reason) to `data/logs/`.
 
 ### Session API (`api/sessions.py`)
-- `GET /api/problems`: list with stats (attempts, last attempt). No answer data: with one bug per problem, the category, upstream id and commit would all point at the answer, so cards omit them.
+- `GET /api/problems`: list with stats (attempts, last attempt, best graded result), ordered not-attempted first and then by picker weight. No answer data: with one bug per problem, the category, upstream id and commit would all point at the answer, so cards omit them.
 - `GET /api/stats`: per-category attempts, misses and miss rate (the weak-spot bars). `GET /api/settings`: defaults and which modes are available. `GET /api/sessions`: session history.
 - `POST /api/sessions` `{problem_id?, mode, ctx_cap, q_budget}`: if `problem_id` is missing, use the weighted picker.
 - `GET /api/sessions/{id}`: files (src only), settings, time left, questions used.
@@ -276,12 +276,23 @@ After grading, update `category_stats` from that session's key bugs (each attemp
 
 ## 8. Frontend
 
-The approved mockups are on the design canvas (boards: Library, Session, Debrief, Architecture). Follow them:
+The approved mockups are on the design canvas (boards: Library, Session, Debrief, Architecture); the owner's export is `Code Comprehension Practice Platform.pdf`. The three pages were rebuilt to those boards on 12 Nov 2026. Follow them:
 - **Dark IDE look:** background `#0E1116`, panels `#151A21`, borders `#2A333F`, text `#E6EAF0` / `#9AA6B5`, accent cyan `#5CC8E8`, amber `#F2B24A` (timer, Realistic mode), coral `#FF7A6B` (flags and misses), green `#6FD08C`. Fonts are IBM Plex Sans for UI and IBM Plex Mono for code and numbers.
 - **Session:** a file tree on the left. In the centre, read-only Monaco with the line selection driving the "Ask assistant" and "Flag as bug" actions, plus decorations for flagged lines. On the right, the assistant panel with a context-window bar, budget pips, the thread, and refusal notices. The report form sits under the editor.
 - **Library:** weak-spot bars, source filters, problem cards, and the session setup panel.
 - **Debrief:** stat tiles, answer key against your findings, assistant claim audit, judge notes, and the change in category stats.
 - **Accessibility:** real buttons and labels, 44 px touch targets, and visible focus rings.
+
+Where the app differs from the boards, and why:
+- **Brand:** the boards say `readcode`; the app says `scholia`.
+- **Problem titles:** problems have ids, not names, so a title is derived as `<repo>: <file stem>` (`django: deletion`).
+- **Card hints:** the boards show "Targets concurrency" on cards. With one bug per problem that names the bug's category before the session, so it is left out. Cards are still ordered so weak-spot problems come first, as the board's subtitle says; the weights never reach the client.
+- **Sources:** the filter pills are All / SWE-bench Lite / BugsInPy (the boards' Mined and Mutated tiers are M6).
+- **Mode switch on the Session bar:** it shows the session's mode and cannot be changed mid-session, because the mode is fixed when the session starts.
+- **Flagging:** the board does not show how a finding is added. Selecting lines shows "Ask assistant" and "Flag as bug" in the file header.
+- **One text per finding:** as on the board, a finding has one field, "Why it is a bug, and the fix". It is sent as `explanation` with an empty `fix`, and the judge prompt (`judge-finding-v2`) scores the fix from that text.
+- **Debrief:** "Not in the answer key" has no mark-valid control yet; ungraded items get a "Grade again" bar; the problem's origin is a footer line.
+- The dev proxy target can be changed with `SCHOLIA_API` (for example a second API on a scratch database).
 
 ---
 
