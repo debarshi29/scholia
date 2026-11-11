@@ -162,3 +162,16 @@ async def test_live_gemini() -> None:
         pytest.skip("GEMINI_API_KEY / REALISTIC_MODEL not set")
     backend = GeminiBackend(s.gemini_api_key.get_secret_value(), s.realistic_model)
     assert (await backend.chat(MSGS, max_tokens=64)).strip()
+
+
+async def test_gemini_retries_dropped_connections(monkeypatch: pytest.MonkeyPatch) -> None:
+    dropped = httpx.RemoteProtocolError("Server disconnected without sending a response.")
+    backend, fake = _gemini(monkeypatch, [dropped, _Resp("ok")])
+    assert await backend.chat(MSGS, 10) == "ok"
+    assert len(fake.calls) == 2
+
+
+async def test_gemini_unreachable_is_backend_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    backend, _ = _gemini(monkeypatch, [httpx.ConnectError("no route")] * 5)
+    with pytest.raises(BackendError, match="unreachable"):
+        await backend.chat(MSGS, 10)
