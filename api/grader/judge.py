@@ -51,6 +51,9 @@ class DesignScore(_Scored):
     notes: str = Field(default="", max_length=1000)
 
 
+NO_SEPARATE_FIX = "(not given separately; any fix is part of the explanation above)"
+
+
 def render_finding(bug: Bug, finding: Finding, code: str) -> str:
     return (
         "## ANSWER KEY\n"
@@ -64,7 +67,7 @@ def render_finding(bug: Bug, finding: Finding, code: str) -> str:
         f"Lines flagged: {finding.line_from}-{finding.line_to}\n"
         f"Category chosen: {finding.category.value}\n"
         f"Explanation: {finding.explanation}\n"
-        f"Proposed fix: {finding.fix or '(none given)'}\n"
+        f"Proposed fix: {finding.fix or NO_SEPARATE_FIX}\n"
     )
 
 

@@ -86,4 +86,4 @@ async def test_export_lists_matched_findings_of_graded_sessions(lab: Lab, tmp_pa
     assert row["your_explanation"] == "The loop bound is one short."
     assert (row["judge_mechanism"], row["judge_fix"]) == ("1", "2")
     assert (row["hand_mechanism"], row["hand_fix"]) == ("", "")
-    assert row["prompt_version"] == "judge-finding-v1"
+    assert row["prompt_version"] == "judge-finding-v2"
