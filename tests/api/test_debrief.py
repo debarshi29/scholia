@@ -65,6 +65,7 @@ async def test_debrief_for_a_full_session(lab: Lab) -> None:
     [audit] = d["audits"]  # the refused query is not audited
     assert (audit["verdict"], audit["relied_on"]) == ("wrong", False)  # the bug was found anyway
     assert audit["reply"] == "reply from fake-qwen" and audit["line_from"] == 48
+    assert audit["tokens"] > 0 and d["totals"]["q_budget"] == 12
 
     assert d["design"] == {
         "notes": "Inject the bound.",
