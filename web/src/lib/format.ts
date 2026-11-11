@@ -55,7 +55,7 @@ export const REFUSAL_TEXT: Record<RefusalReason, string> = {
   over_ctx_cap: "The selection and question are over the context cap. Select fewer lines.",
   budget_exhausted: "The question budget is used up.",
   licence_not_allowed: "This problem's licence does not allow sending it to the cloud model.",
-  backend_error: "The model could not be reached. This did not cost a question.",
+  backend_error: "The model could not be reached or returned nothing.",
 };
 
 /** `mm:ss`, or `h:mm:ss` from one hour up. */
