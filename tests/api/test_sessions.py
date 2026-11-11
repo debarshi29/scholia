@@ -35,6 +35,9 @@ CARD_FIELDS = {
     "lines",
     "attempts",
     "last_attempt_at",
+    "best_found",
+    "best_bugs",
+    "best_seconds",
 }
 
 
@@ -43,13 +46,45 @@ CARD_FIELDS = {
 
 async def test_problems_list_has_stats_and_no_answer_data(lab: Lab) -> None:
     await lab.start(problem_id=lab.problem_ids[0])
-    cards = (await lab.client.get("/api/problems")).json()
-    assert [c["id"] for c in cards] == lab.problem_ids
-    first = cards[0]
+    cards = {c["id"]: c for c in (await lab.client.get("/api/problems")).json()}
+    assert set(cards) == set(lab.problem_ids)
+    first, second = cards[lab.problem_ids[0]], cards[lab.problem_ids[1]]
     assert first["attempts"] == 1 and first["last_attempt_at"]
-    assert cards[1]["attempts"] == 0 and cards[1]["last_attempt_at"] is None
+    assert second["attempts"] == 0 and second["last_attempt_at"] is None
     assert first["files"] == ["pkg/core.py", "pkg/util.py"] and first["lines"] == 360
+    assert first["best_found"] is None  # started, not graded yet
     assert set(first) == CARD_FIELDS
+
+
+async def test_problems_are_ordered_unattempted_first_then_by_weak_spot(lab: Lab) -> None:
+    ids = lab.problem_ids  # P-0001 is a boundary bug, P-0002 a concurrency bug
+    order = [c["id"] for c in (await lab.client.get("/api/problems")).json()]
+    assert order == ids  # equal weights: by id
+
+    async with AsyncSession(lab.engine) as db:
+        db.add(CategoryStatRow(category=BugCategory.CONCURRENCY, attempts=4, misses=3))
+        await db.commit()
+    order = [c["id"] for c in (await lab.client.get("/api/problems")).json()]
+    assert order == [ids[1], ids[0]]  # the weak spot comes first
+
+    await lab.start(problem_id=ids[1])
+    order = [c["id"] for c in (await lab.client.get("/api/problems")).json()]
+    assert order == [ids[0], ids[1]]  # attempted problems go last
+
+
+async def test_card_shows_best_graded_attempt(lab: Lab) -> None:
+    pid = lab.problem_ids[0]
+    missed = (await lab.start(problem_id=pid))["id"]
+    await lab.client.post(f"/api/sessions/{missed}/submit", json={"findings": []})
+    card = next(c for c in (await lab.client.get("/api/problems")).json() if c["id"] == pid)
+    assert (card["best_found"], card["best_bugs"]) == (0, 1)
+
+    found = (await lab.start(problem_id=pid))["id"]
+    lab.judge.replies = ['{"mechanism": 2, "fix": 2}', '{"score": 1}']
+    await lab.client.post(f"/api/sessions/{found}/submit", json={"findings": [FINDING]})
+    card = next(c for c in (await lab.client.get("/api/problems")).json() if c["id"] == pid)
+    assert (card["best_found"], card["best_bugs"]) == (1, 1)
+    assert card["attempts"] == 2 and 0 <= card["best_seconds"] < 60
 
 
 async def test_stats_lists_every_category(lab: Lab) -> None:
@@ -81,6 +116,7 @@ async def test_create_uses_defaults_and_serves_src_only(lab: Lab) -> None:
     assert view["files"][0]["content"].startswith("core_line_1 = 1\n")
     assert view["session_seconds"] == 3600 and 3590 <= view["seconds_left"] <= 3600
     assert view["questions_used"] == 0 and view["thread"] == []
+    assert view["origin_repo"] == "org/repo" and view["model"] == "qwen2.5-coder:3b"
 
 
 async def test_create_with_custom_settings(lab: Lab) -> None:
