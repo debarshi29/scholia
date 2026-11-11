@@ -24,7 +24,9 @@ async def build_proxy(settings: Settings) -> Proxy:
     realistic: ChatBackend | None = None
     if settings.gemini_api_key is not None and settings.realistic_model:
         realistic = GeminiBackend(
-            settings.gemini_api_key.get_secret_value(), settings.realistic_model
+            settings.gemini_api_key.get_secret_value(),
+            settings.realistic_model,
+            settings.gemini_thinking_tokens,
         )
     return Proxy(
         settings=settings,
@@ -53,7 +55,11 @@ def get_store() -> ProblemStore:
 def build_grader(settings: Settings, engine: AsyncEngine) -> Grader:
     backend: ChatBackend | None = None
     if settings.gemini_api_key is not None and settings.judge_model:
-        backend = GeminiBackend(settings.gemini_api_key.get_secret_value(), settings.judge_model)
+        backend = GeminiBackend(
+            settings.gemini_api_key.get_secret_value(),
+            settings.judge_model,
+            settings.gemini_thinking_tokens,
+        )
     return Grader(
         engine=engine,
         settings=settings,

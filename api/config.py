@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     # Grader
     match_tolerance_lines: int = Field(default=3, ge=0)
     judge_max_tokens: int = Field(default=700, gt=0)
+    gemini_thinking_tokens: int = Field(default=2048, ge=0)
+    """Extra output-token allowance for the Gemini model's hidden reasoning, on top of
+    ``max_reply_tokens`` / ``judge_max_tokens``."""
 
     # Storage
     db_path: Path = Path("data/scholia.db")

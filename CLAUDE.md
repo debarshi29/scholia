@@ -251,6 +251,7 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 - The cap check counts the **fully rendered ChatML prompt** (system + template + numbered selected lines + question) with the real tokenizer, so the question counts too: pasting code into the question cannot bypass the cap. Questions are also limited to `MAX_QUESTION_CHARS`.
 - Constrained prompts contain only the numbered selected lines and the question: no file path. Each question is standalone (no thread history is sent).
 - Refusal reasons: `no_selection`, `invalid_selection`, `question_too_long`, `over_ctx_cap`, `budget_exhausted`, `licence_not_allowed` (Realistic), `backend_error`. A backend failure is logged as a `backend_error` refusal and costs no budget.
+- Gemini models that reason before answering count the hidden reasoning tokens against `max_output_tokens`, so the Gemini backend adds `GEMINI_THINKING_TOKENS` to every limit (Realistic replies and judge calls). Without it, long prompts come back with empty text.
 - Ollama's OpenAI-compatible endpoint cannot set `num_ctx`: keep `ctx_cap` at or below the context Ollama is configured with.
 
 ### Grader (`api/grader/`)
@@ -299,6 +300,7 @@ MAX_REPLY_TOKENS=512
 MAX_QUESTION_CHARS=1000
 MATCH_TOLERANCE_LINES=3
 JUDGE_MAX_TOKENS=700
+GEMINI_THINKING_TOKENS=2048   # allowance for the Gemini model's hidden reasoning tokens
 DB_PATH=data/scholia.db
 PROBLEMS_DIR=problems
 ```

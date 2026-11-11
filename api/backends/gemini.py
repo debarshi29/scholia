@@ -34,10 +34,14 @@ class GeminiBackend:
     wait: WaitBaseT = wait_exponential(multiplier=2, min=2, max=60)
     attempts = 5
 
-    def __init__(self, api_key: str, model: str) -> None:
+    def __init__(self, api_key: str, model: str, thinking_tokens: int = 0) -> None:
+        """``thinking_tokens`` is added to every request's output limit. Models that reason
+        before answering count those hidden tokens against ``max_output_tokens``; without
+        the allowance a long prompt can use the whole limit and return empty text."""
         if not model:
             raise BackendError("REALISTIC_MODEL is not set")
         self.model = model
+        self.thinking_tokens = thinking_tokens
         self._client = genai.Client(api_key=api_key)
 
     async def _generate(
@@ -59,7 +63,7 @@ class GeminiBackend:
         ]
         config = types.GenerateContentConfig(
             system_instruction=system or None,
-            max_output_tokens=max_tokens,
+            max_output_tokens=max_tokens + self.thinking_tokens,
             temperature=0.2,
         )
         try:
