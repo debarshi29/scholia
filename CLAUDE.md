@@ -97,6 +97,7 @@ scholia/
       judge.py              # Gemini rubric scoring
       audit.py              # assistant-claim audit
       run.py                # one grading pass: match, judge, audit, tracker
+      agreement.py          # M5: export matched findings for hand grading, check judge agreement
       prompts/              # judge + audit prompt templates (versioned files)
     tracker.py
     openapi.py              # writes the OpenAPI document for pnpm gen:api
@@ -109,6 +110,7 @@ scholia/
     src/router.tsx          # History API router for the three pages
   problems/                 # generated; git-ignored except problems/_seed/
   data/                     # sqlite db, logs; git-ignored
+  scripts/py.cmd            # runs uv's base interpreter with the venv's packages (Smart App Control)
   tests/
     fixtures/graded/        # hand-graded reports used to test the grader
 ```
@@ -143,7 +145,7 @@ cd web && pnpm typecheck && pnpm lint
 cd web && pnpm gen:api
 ```
 
-Smart App Control is on for this machine and blocks the unsigned `uvicorn.exe` and `mypy.exe` launchers that uv generates, so run those two as modules (`python -m ...`) as shown above. It also blocks Tailwind 4's native class scanner, which is why the web app uses Tailwind 3 (pure JavaScript). TypeScript stays on 6 until `typescript-eslint` and `openapi-typescript` support 7. Run `pnpm` from PowerShell: its shim does not work in Git Bash.
+Smart App Control is on for this machine and blocks the unsigned `uvicorn.exe` and `mypy.exe` launchers that uv generates, so run those two as modules (`python -m ...`) as shown above. It also blocks Tailwind 4's native class scanner, which is why the web app uses Tailwind 3 (pure JavaScript). TypeScript stays on 6 until `typescript-eslint` and `openapi-typescript` support 7. Run `pnpm` from PowerShell: its shim does not work in Git Bash. Since 11 Nov 2026 it also blocks `.venv\Scripts\python.exe` (uv's unsigned launcher) at times, which breaks every `uv run` command; `scripts\py.cmd <args>` runs uv's base interpreter (which is allowed) with the venv's packages instead. Never change or disable Smart App Control to make something work: say what is blocked and use an allowed route or ask.
 
 Before calling a task done, run `ruff`, `mypy` and `pytest` (plus web `typecheck` if you touched `web/`), and report the results.
 
