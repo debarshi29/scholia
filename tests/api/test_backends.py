@@ -175,3 +175,11 @@ async def test_gemini_unreachable_is_backend_error(monkeypatch: pytest.MonkeyPat
     backend, _ = _gemini(monkeypatch, [httpx.ConnectError("no route")] * 5)
     with pytest.raises(BackendError, match="unreachable"):
         await backend.chat(MSGS, 10)
+
+
+async def test_gemini_adds_the_thinking_allowance(monkeypatch: pytest.MonkeyPatch) -> None:
+    backend = GeminiBackend(api_key="k", model="gemini-test", thinking_tokens=2048)
+    fake = _FakeGenerate([_Resp("ok")])
+    monkeypatch.setattr(backend, "_generate", fake)
+    await backend.chat(MSGS, max_tokens=512)
+    assert fake.calls[0]["config"].max_output_tokens == 2560
