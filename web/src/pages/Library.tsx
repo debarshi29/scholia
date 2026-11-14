@@ -606,6 +606,7 @@ export default function Library() {
     { value: "all", label: "All" },
     { value: "swebench", label: SOURCE_LABEL.swebench },
     { value: "bugsinpy", label: SOURCE_LABEL.bugsinpy },
+    { value: "planted", label: SOURCE_LABEL.planted },
   ];
   const projects = new Set(all.map((p) => p.origin_repo)).size;
   const attempted = all.filter((p) => p.attempts > 0).length;

@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     ``max_reply_tokens`` / ``judge_max_tokens``."""
 
     # Corpus
-    library_topics: str = "ml,scientific,math"
+    library_topics: str = "ml,scientific,math,dsa"
     """Topics to build and show (see ``corpus/topics.py``). Empty means every topic."""
 
     @property

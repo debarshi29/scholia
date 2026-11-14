@@ -35,6 +35,7 @@ from corpus.classify import (
     numbered_context,
 )
 from corpus.filters import (
+    MIN_LINES,
     DropReason,
     check_file_set,
     check_line_counts,
@@ -134,10 +135,16 @@ def prepare(
         raise Dropped(DropReason.LICENCE_NOT_ALLOWED, f"{cand.repo}: {licence}")
 
     try:
-        originals = {fp.path: repos.read_text(cand.repo, cand.commit, fp.path) for fp in patches}
+        originals = {
+            fp.path: cand.buggy_files[fp.path]
+            if fp.path in cand.buggy_files
+            else repos.read_text(cand.repo, cand.commit, fp.path)
+            for fp in patches
+        }
     except CheckoutError as exc:
         raise Dropped(DropReason.CHECKOUT_FAILED, str(exc)) from exc
-    if reason := check_line_counts(list(originals.values())):
+    min_lines = cand.min_lines if cand.min_lines is not None else MIN_LINES
+    if reason := check_line_counts(list(originals.values()), min_lines):
         sizes = {p: len(split_lines(t)) for p, t in originals.items()}
         raise Dropped(reason, json.dumps(sizes))
 
@@ -258,7 +265,7 @@ def run(
     return published
 
 
-def source_for(name: str, data_dir: Path) -> CandidateSource:
+def source_for(name: str, data_dir: Path, limit: int = 20) -> CandidateSource:
     if name == Source.SWEBENCH:
         from corpus.sources.swebench import SWEBenchLite
 
@@ -267,6 +274,11 @@ def source_for(name: str, data_dir: Path) -> CandidateSource:
         from corpus.sources.bugsinpy import BugsInPy
 
         return BugsInPy(data_dir / "repos" / "_datasets" / "BugsInPy")
+    if name == Source.PLANTED:
+        from corpus.sources.planted import PlantedBugs
+
+        # Each candidate costs two doctest runs, so only as many as can be needed.
+        return PlantedBugs(data_dir / "repos" / "_planted", wanted=limit * 3)
     raise SystemExit(f"unknown source: {name}")
 
 
@@ -282,7 +294,7 @@ async def _register(settings: Settings, published: list[Published]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m corpus.build")
-    parser.add_argument("--tier", type=int, choices=[0], required=True)
+    parser.add_argument("--tier", type=int, choices=[0, 2], required=True)
     parser.add_argument("--source", choices=[s.value for s in Source], required=True)
     parser.add_argument("--limit", type=int, default=20, help="problems to publish")
     parser.add_argument(
@@ -330,7 +342,7 @@ def main(argv: list[str] | None = None) -> int:
         prompt_version=classifier.prompt_version if classifier else None,
     )
     published = run(
-        source_for(args.source, data_dir).candidates(),
+        source_for(args.source, data_dir, args.limit).candidates(),
         build_log=build_log,
         problems_dir=settings.problems_dir,
         repos=repos,

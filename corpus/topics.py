@@ -16,6 +16,8 @@ class Topic(StrEnum):
     """Numerical and array code built on numpy."""
     MATH = "math"
     """Symbolic maths and algorithms."""
+    DSA = "dsa"
+    """Data structures, algorithms and competitive-programming style code."""
     WEB = "web"
     TOOLING = "tooling"
     OTHER = "other"
@@ -35,6 +37,8 @@ REPO_TOPICS: dict[str, Topic] = {
     "pytest-dev/pytest": Topic.TOOLING,
     "sphinx-doc/sphinx": Topic.TOOLING,
     "pylint-dev/pylint": Topic.TOOLING,
+    # Planted bugs
+    "thealgorithms/python": Topic.DSA,
     # BugsInPy
     "keras-team/keras": Topic.ML,
     "explosion/spacy": Topic.ML,

@@ -39,7 +39,7 @@ def test_allowed_with_empty_set_means_everything() -> None:
 
 def test_settings_default_keeps_ml_scientific_and_math() -> None:
     s = Settings(_env_file=None)  # type: ignore[call-arg]
-    assert s.topics == {Topic.ML, Topic.SCIENTIFIC, Topic.MATH}
+    assert s.topics == {Topic.ML, Topic.SCIENTIFIC, Topic.MATH, Topic.DSA}
     assert Settings(_env_file=None, library_topics="").topics == frozenset()  # type: ignore[call-arg]
     with pytest.raises(ValueError):
         Settings(_env_file=None, library_topics="nonsense")  # type: ignore[call-arg]

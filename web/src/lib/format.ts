@@ -31,6 +31,7 @@ export const CATEGORY_LABEL: Record<BugCategory, string> = {
 export const SOURCE_LABEL: Record<Source, string> = {
   swebench: "SWE-bench Lite",
   bugsinpy: "BugsInPy",
+  planted: "Algorithms",
 };
 
 export const STATUS_LABEL: Record<OutcomeStatus, string> = {

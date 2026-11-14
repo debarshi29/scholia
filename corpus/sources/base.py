@@ -21,6 +21,11 @@ class Candidate:
     test_patch: str = ""
     failing_tests: list[str] = field(default_factory=list)
     """Tests that fail before the fix and pass after it."""
+    buggy_files: dict[str, str] = field(default_factory=dict)
+    """Buggy text of files that is not in the repo at ``commit`` (planted bugs); the
+    ``patch`` fixes these. Files not listed are read from the repo."""
+    min_lines: int | None = None
+    """Per-source override of the minimum file length (algorithm files are short)."""
 
 
 class CandidateSource(Protocol):

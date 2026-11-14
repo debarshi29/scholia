@@ -233,7 +233,8 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 - `--limit N` is the number of problems to **publish**; candidates are scanned round-robin across repos (one per repo in turn, each repo in dataset order) until N are kept, so a small build spans many projects. `--dry-run` runs every deterministic check and publishes nothing.
 - Patch hunk headers can be off from `base_commit` (git tolerates offsets), so changed lines are located by hunk content, not by header numbers. Lines end at `
 ` only (`str.splitlines()` also splits on form feeds).
-- **Topics (14 Nov 2026, owner's request):** the owner wants AI/ML and numerical code, not web frameworks or developer tooling. `corpus/topics.py` maps each upstream project to a topic (`ml`, `scientific`, `math`, `web`, `tooling`, `other`). `LIBRARY_TOPICS` (default `ml,scientific,math`) limits what the build examines (`--topics` overrides it; `--topics all` lifts it) and what the Library lists, the picker draws and a session can start on. Problems of other topics stay on disk and their sessions stay readable; they are just not offered. A new upstream project must be added to `REPO_TOPICS`, or it counts as `other`.
+- **Planted bugs, Tier 2 (14 Nov 2026, owner's request for DSA/CP problems; an exception to "no Tier 2 mutation"):** `corpus/sources/planted.py` takes files from TheAlgorithms/Python (MIT; shallow clone in `data/repos/_planted/`), applies one deterministic mutation (comparison flipped by one step, `+` and `-` swapped, a 0/1/2 constant raised), and keeps the mutant only if the file's doctests pass before and fail after it (run with `python -m doctest`, 20 s timeout, so the build executes that upstream code). The answer key is the reverse of the mutation. Files may be 60-500 lines (`Candidate.min_lines`). The buggy text is carried in `Candidate.buggy_files`. Build with `python -m corpus.build --tier 2 --source planted --limit N`; the same seed gives the same problems. No model writes the bugs.
+- **Topics (14 Nov 2026, owner's request):** the owner wants AI/ML and numerical code, not web frameworks or developer tooling. `corpus/topics.py` maps each upstream project to a topic (`ml`, `scientific`, `math`, `dsa`, `web`, `tooling`, `other`). `LIBRARY_TOPICS` (default `ml,scientific,math,dsa`) limits what the build examines (`--topics` overrides it; `--topics all` lifts it) and what the Library lists, the picker draws and a session can start on. Problems of other topics stay on disk and their sessions stay readable; they are just not offered. A new upstream project must be added to `REPO_TOPICS`, or it counts as `other`.
 - Every build run writes a summary (candidates, kept, dropped by reason, skipped by topic) to `data/logs/`.
 
 ### Session API (`api/sessions.py`)
@@ -322,7 +323,7 @@ MAX_QUESTION_CHARS=1000
 MATCH_TOLERANCE_LINES=3
 JUDGE_MAX_TOKENS=700
 GEMINI_THINKING_TOKENS=2048   # allowance for the Gemini model's hidden reasoning tokens
-LIBRARY_TOPICS=ml,scientific,math   # topics to build and show; empty = all
+LIBRARY_TOPICS=ml,scientific,math,dsa   # topics to build and show; empty = all
 DB_PATH=data/scholia.db
 PROBLEMS_DIR=problems
 ```
