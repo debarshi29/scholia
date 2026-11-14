@@ -99,24 +99,7 @@
 @layer components {
   /* A panel with a faint top highlight and a soft drop shadow. */
   .surface {
-    border: 1px solid rgb(var(--c-line));
-    border-radius: 10px;
-    background: rgb(var(--c-panel));
-  }
-  /* A panel that reacts to the pointer. */
-  .surface-hover {
-    transition:
-      transform 0.22s var(--ease),
-      border-color 0.22s var(--ease),
-      box-shadow 0.22s var(--ease),
-      background-color 0.22s var(--ease);
-  }
-  .surface-hover:hover {
-    border-color: rgb(var(--c-accent) / 0.4);
-  }
-  .surface-selected {
-    border-color: rgb(var(--c-accent));
-    background: rgb(var(--c-raised));
+    border-top: 1px solid rgb(var(--c-ink) / 0.6);
   }
   /* Sticky top bars. */
   .topbar {
@@ -284,21 +267,21 @@
     transform: scaleX(0);
   }
 }
-/* A compact problem tile. */
-.tile {
-  border: 1px solid rgb(var(--c-line));
-  border-radius: 8px;
-  background: rgb(var(--c-panel));
-  transition:
-    border-color 0.15s var(--ease),
-    background-color 0.15s var(--ease);
+/* A problem as a line in a list: no box, a rule below, an accent bar when chosen. */
+.row {
+  transition: background-color 0.15s var(--ease);
 }
-.tile:hover {
-  border-color: rgb(var(--c-accent) / 0.5);
-  background: rgb(var(--c-raised));
+.row:hover {
+  background: rgb(var(--c-ink) / 0.04);
 }
-.tile-selected,
-.tile-selected:hover {
+.row-selected,
+.row-selected:hover {
+  background: rgb(var(--c-accent) / 0.1);
+  box-shadow: inset 3px 0 0 rgb(var(--c-accent));
+}
+.pick {
+  transition: border-color 0.15s var(--ease);
+}
+.pick:hover {
   border-color: rgb(var(--c-accent));
-  background: rgb(var(--c-accent) / 0.07);
 }

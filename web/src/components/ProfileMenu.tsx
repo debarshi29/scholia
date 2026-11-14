@@ -65,7 +65,7 @@ export default function ProfileMenu() {
         <div
           role="menu"
           aria-label="Profiles"
-          className="fade surface absolute right-0 z-30 mt-1.5 w-60 p-1.5"
+          className="fade absolute right-0 z-30 mt-1.5 w-60 rounded-md border border-line bg-raised p-1.5 shadow-lg shadow-black/20"
         >
           <p className="eyebrow px-2 pt-1 pb-1.5">Practising as</p>
           <ul>

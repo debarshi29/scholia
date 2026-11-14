@@ -90,41 +90,12 @@ function Header({ sessions }: { sessions: SessionSummary[] }) {
 
 // ---- small helpers ----
 
-const AVATAR = [
-  "bg-cyan/15 text-cyan",
-  "bg-amber/15 text-amber",
-  "bg-green/15 text-green",
-  "bg-coral/15 text-coral",
-  "bg-ink/10 text-ink",
-];
-
 function repoName(p: ProblemCard): string {
   return p.origin_repo.split("/").pop() ?? p.origin_repo;
 }
 
 function fileName(p: ProblemCard): string {
   return problemTitle(p.origin_repo, p.files).split(": ")[1] ?? repoName(p);
-}
-
-/** A stable colour per project, so the same repo looks the same everywhere. */
-function avatarTone(repo: string): string {
-  let h = 0;
-  for (const ch of repo) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return AVATAR[h % AVATAR.length] ?? AVATAR[0]!;
-}
-
-function Avatar({ p, large }: { p: ProblemCard; large?: boolean }) {
-  const name = repoName(p).replace(/[^a-zA-Z]/g, "");
-  return (
-    <span
-      aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center rounded-md font-mono font-semibold uppercase ${
-        large ? "size-8 text-sm" : "size-8 text-[12px]"
-      } ${avatarTone(p.origin_repo)}`}
-    >
-      {name.slice(0, 2) || "py"}
-    </span>
-  );
 }
 
 function status(p: ProblemCard): { text: string; dot: string; tone: string } {
@@ -211,14 +182,14 @@ function Spotlight(props: {
           <button
             type="button"
             onClick={() => setTick((n) => n + 1)}
-            className="flex min-h-9 items-center gap-2 rounded-md border border-line px-3.5 text-[13px] font-medium text-mute transition hover:border-cyan/50 hover:text-cyan"
+            className="flex min-h-9 items-center gap-2 rounded-md px-2 text-[13px] font-medium text-mute transition hover:text-cyan"
           >
             <Refresh className="size-4" />
             Shuffle
           </button>
         </div>
       </div>
-      <div key={tick} className="grid gap-4 md:grid-cols-3">
+      <div key={tick} className="grid gap-8 md:grid-cols-3">
         {picks.map((p, i) => {
           const on = p.id === props.selectedId;
           return (
@@ -228,27 +199,21 @@ function Spotlight(props: {
               aria-pressed={on}
               onClick={() => props.onSelect(p.id)}
               style={stagger(i)}
-              className={`surface surface-hover rise group relative flex flex-col gap-2.5 overflow-hidden px-3.5 py-3 text-left ${
-                on ? "surface-selected" : ""
+              className={`pick rise group flex flex-col gap-1.5 border-t-2 pt-3 pb-3 text-left ${
+                on ? "border-cyan" : "border-ink"
               }`}
             >
-              <span className="flex items-center gap-3.5">
-                <Avatar p={p} large />
-                <span className="min-w-0">
-                  <span className="block truncate text-[12.5px] text-mute">{repoName(p)}</span>
-                  <span className="block truncate text-[15px] leading-tight font-semibold">
-                    {fileName(p)}
-                  </span>
+              <span className="flex items-baseline justify-between gap-2 font-mono text-[11.5px] text-mute">
+                <span className={on ? "text-cyan" : ""}>{p.id}</span>
+                <span className="font-sans font-medium text-cyan opacity-0 transition duration-200 group-hover:opacity-100">
+                  {on ? "Selected" : "Select"} →
                 </span>
               </span>
-              <span className="flex items-center justify-between gap-2 text-[12.5px] text-mute">
-                <span className="font-mono">
-                  {p.id} · {p.lines} lines
-                </span>
-                <span className="flex items-center gap-1.5 font-medium text-cyan opacity-0 transition duration-200 group-hover:opacity-100">
-                  {on ? "Selected" : "Select"}
-                  <ArrowRight className="size-4" />
-                </span>
+              <span className="truncate font-serif text-[22px] leading-tight font-medium">
+                {fileName(p)}
+              </span>
+              <span className="text-mute">
+                {repoName(p)} · {p.lines} lines
               </span>
             </button>
           );
@@ -308,24 +273,15 @@ function Tile(props: { problem: ProblemCard; selected: boolean; onSelect: () => 
       aria-pressed={props.selected}
       onClick={props.onSelect}
       title={`${p.id} · ${p.files.join(", ")}`}
-      className={`tile flex min-h-[3.25rem] items-center gap-2.5 px-2.5 py-2 text-left ${
-        props.selected ? "tile-selected" : ""
+      className={`row grid w-full grid-cols-[4.5rem_minmax(0,1fr)_10rem_3rem_7.5rem] items-baseline gap-3 border-b border-line px-3 py-2.5 text-left ${
+        props.selected ? "row-selected" : ""
       }`}
     >
-      <Avatar p={p} />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate leading-snug font-semibold">{fileName(p)}</span>
-        <span className="block truncate text-[12.5px] text-mute">
-          {repoName(p)} · {p.lines} lines
-        </span>
-      </span>
-      <span className="flex shrink-0 flex-col items-end gap-1 font-mono text-[11.5px]">
-        <span className="text-mute/80">{p.id}</span>
-        <span className={`flex items-center gap-1.5 ${s.tone}`}>
-          <span className={`size-1.5 rounded-full ${s.dot}`} />
-          {s.text}
-        </span>
-      </span>
+      <span className="font-mono text-[12px] text-mute">{p.id}</span>
+      <span className="truncate font-mono text-[13.5px] font-medium">{fileName(p)}</span>
+      <span className="truncate text-mute">{repoName(p)}</span>
+      <span className="text-right font-mono text-[12px] text-mute">{p.lines}</span>
+      <span className={`truncate text-right font-serif text-[13.5px] italic ${s.tone}`}>{s.text}</span>
     </button>
   );
 }
@@ -486,7 +442,7 @@ function Setup(props: {
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-lg border border-line px-3 py-3">
+        <div className="flex flex-col gap-3 border-y border-line py-3">
           <Stepper
             label="Context window"
             icon={<Layers />}
@@ -634,10 +590,8 @@ export default function Library() {
                 Each one is a real file you have not seen, with a bug you have to find.
               </p>
             </div>
-            <p className="flex flex-wrap gap-2">
-              <Chip>{plural(all.length, "problem")}</Chip>
-              <Chip>{plural(projects, "project")}</Chip>
-              <Chip tone={attempted > 0 ? "cyan" : "mute"}>{attempted} attempted</Chip>
+            <p className="font-mono text-[12px] text-mute">
+              {plural(all.length, "problem")} · {plural(projects, "project")} · {attempted} attempted
             </p>
           </div>
 
@@ -655,7 +609,7 @@ export default function Library() {
 
               <section className="rise flex flex-col gap-4" style={stagger(3)}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div role="group" aria-label="Source" className="flex flex-wrap items-center gap-2">
+                  <div role="group" aria-label="Source" className="flex flex-wrap items-center gap-5">
                     {shownFilters.map((f) => {
                       const on = source === f.value;
                       return (
@@ -664,17 +618,15 @@ export default function Library() {
                           type="button"
                           aria-pressed={on}
                           onClick={() => setSource(f.value)}
-                          className={`flex min-h-9 items-center gap-2 rounded-md px-3 text-[13px] font-medium transition duration-150 ${
+                          className={`flex min-h-9 items-center gap-2 border-b-2 px-0.5 text-[13px] transition duration-150 ${
                             on
-                              ? " bg-cyan text-on "
-                              : "border border-line text-ink hover:border-mute/60 hover:bg-ink/[0.04]"
+                              ? "border-cyan font-medium text-ink"
+                              : "border-transparent text-mute hover:text-ink"
                           }`}
                         >
                           {f.label}
                           <span
-                            className={`rounded-full px-1.5 py-0.5 font-mono text-[11.5px] leading-none ${
-                              on ? "bg-bg/20" : "bg-ink/[0.07] text-mute"
-                            }`}
+                            className="font-mono text-[11.5px] text-mute"
                           >
                             {count(f.value)}
                           </span>
@@ -699,18 +651,15 @@ export default function Library() {
                   </div>
                 </div>
 
-                <div key={`${source}-${grouping}`} className="fade flex flex-col gap-6">
+                <div key={`${source}-${grouping}`} className="fade flex flex-col gap-8">
                   {groups.map((g) => (
                     <section key={g.key} aria-label={g.label}>
-                      <h3 className="mb-2.5 flex items-center gap-3">
-                        <span className="font-semibold">{g.label}</span>
-                        <span className="rounded-full bg-ink/[0.07] px-2 py-0.5 font-mono text-[11.5px] leading-none text-mute">
-                          {g.problems.length}
-                        </span>
+                      <h3 className="flex items-baseline gap-3 border-b border-ink/70 pb-1.5">
+                        <span className="font-serif text-[19px] font-semibold">{g.label}</span>
+                        <span className="font-mono text-[12px] text-mute">{g.problems.length}</span>
                         {g.note}
-                        <span className="h-px flex-1 bg-ink/[0.06]" aria-hidden="true" />
                       </h3>
-                      <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+<div className="flex flex-col">
                         {g.problems.map((p) => (
                           <Tile
                             key={p.id}
