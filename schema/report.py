@@ -1,4 +1,4 @@
-"""User-submitted report: findings plus free-text design notes."""
+"""User-submitted report: findings, free-text design notes and optional code fixes."""
 
 from typing import Self
 
@@ -23,6 +23,21 @@ class Finding(StrictModel):
         return self
 
 
+class FilePatch(StrictModel):
+    """The user's edited copy of one served file: their attempt at fixing the bug."""
+
+    file: RelPath
+    content: str = Field(max_length=400_000)
+
+
 class Report(StrictModel):
     findings: list[Finding] = Field(default_factory=list)
     design_notes: str = ""
+    patches: list[FilePatch] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _one_patch_per_file(self) -> Self:
+        files = [p.file for p in self.patches]
+        if len(files) != len(set(files)):
+            raise ValueError("at most one patch per file")
+        return self

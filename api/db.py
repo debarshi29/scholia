@@ -118,6 +118,41 @@ class OutcomeRow(SQLModel, table=True):
     prompt_version: str | None = None
 
 
+class PatchRow(SQLModel, table=True):
+    """The user's edited copy of one file, frozen at submit, with its diff from the original."""
+
+    __tablename__ = "patches"
+    __table_args__ = (UniqueConstraint("session_id", "file"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    session_id: str = Field(foreign_key="sessions.id", index=True)
+    file: str
+    content: str
+    diff: str
+
+
+class FixResultRow(SQLModel, table=True):
+    """How the submitted fix did against one key bug."""
+
+    __tablename__ = "fix_results"
+    __table_args__ = (UniqueConstraint("session_id", "bug_id"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    session_id: str = Field(foreign_key="sessions.id", index=True)
+    bug_id: str
+    submitted: bool = False
+    """The bug's file was edited at all."""
+    on_target: bool = False
+    """The edit changed the bug's lines (deterministic, same tolerance as matching)."""
+    syntax_error: str | None = None
+    judge_fix: int | None = Field(default=None, ge=0, le=2)
+    judge_notes: str = ""
+    tests: str | None = None
+    """``passed`` / ``failed`` / ``error`` where the problem has runnable tests, else null."""
+    tests_detail: str = ""
+    prompt_version: str | None = None
+
+
 class ClaimAuditRow(SQLModel, table=True):
     __tablename__ = "claim_audits"
 

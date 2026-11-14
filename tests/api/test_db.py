@@ -63,6 +63,8 @@ async def test_all_spec_tables_exist(engine: AsyncEngine) -> None:
         "outcomes",
         "claim_audits",
         "category_stats",
+        "patches",
+        "fix_results",
     }
 
 
