@@ -275,7 +275,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
               })}
             </ul>
           </div>
-          <section className="rounded-lg border border-line px-3 py-3 text-[12px] leading-relaxed text-mute">
+          <section className="border-t border-line pt-3 text-[12px] leading-relaxed text-mute">
             <h2 className="eyebrow mb-2.5">Session rules</h2>
             <ul className="flex flex-col gap-2.5">
               <li className={rule}>
