@@ -277,6 +277,24 @@ async def best_results(db: AsyncSession) -> dict[str, tuple[int, int, int]]:
     return best
 
 
+def mix_projects(cards: list[ProblemCard], ranks: list[tuple[bool, float]]) -> list[ProblemCard]:
+    """Within each run of equally ranked cards, take one project in turn, so the list does
+    not open with twenty files from the same repo. The rank order itself is unchanged."""
+    out: list[ProblemCard] = []
+    start = 0
+    while start < len(cards):
+        end = start
+        while end < len(cards) and ranks[end] == ranks[start]:
+            end += 1
+        by_repo: dict[str, list[ProblemCard]] = {}
+        for card in cards[start:end]:
+            by_repo.setdefault(card.origin_repo, []).append(card)
+        for i in range(max(len(group) for group in by_repo.values())):
+            out.extend(group[i] for group in by_repo.values() if i < len(group))
+        start = end
+    return out
+
+
 @router.get("/problems", response_model=list[ProblemCard])
 async def list_problems(db: Db, store: Store) -> list[ProblemCard]:
     stmt = select(SessionRow.problem_id, func.count(), func.max(SessionRow.started_at)).group_by(
@@ -292,6 +310,7 @@ async def list_problems(db: Db, store: Store) -> list[ProblemCard]:
         key=lambda p: (p.id in attempts, -problem_weight(p.categories, rates), p.id),
     )
     cards: list[ProblemCard] = []
+    ranks: list[tuple[bool, float]] = []
     for p in ordered:
         try:
             meta = await store.meta(p.id, p.version)
@@ -299,6 +318,7 @@ async def list_problems(db: Db, store: Store) -> list[ProblemCard]:
             continue  # indexed but missing on disk: not startable, so not listed
         n, last = attempts.get(p.id, (0, None))
         found, bugs, seconds = best.get(p.id, (None, None, None))
+        ranks.append((p.id in attempts, problem_weight(p.categories, rates)))
         cards.append(
             ProblemCard(
                 id=p.id,
@@ -316,7 +336,7 @@ async def list_problems(db: Db, store: Store) -> list[ProblemCard]:
                 best_seconds=seconds,
             )
         )
-    return cards
+    return mix_projects(cards, ranks)
 
 
 @router.get("/stats", response_model=list[CategoryStat])
