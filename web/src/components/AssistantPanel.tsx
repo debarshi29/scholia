@@ -95,7 +95,7 @@ function Pips({ used, budget }: { used: number; budget: number }) {
             <span
               key={i}
               className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${
-                i < used ? "bg-cyan shadow-[0_0_8px_rgb(92_200_232/0.6)]" : "bg-white/[0.08]"
+                i < used ? "bg-cyan" : "bg-white/[0.08]"
               }`}
             />
           ))}
@@ -115,7 +115,7 @@ function Exchange({ item, amber }: { item: ThreadItem; amber: boolean }) {
   const place = where(item);
   return (
     <li className="rise flex flex-col gap-3">
-      <div className="ml-6 rounded-2xl rounded-tr-md border border-white/[0.06] bg-white/[0.05] px-4 py-3">
+      <div className="ml-6 rounded-lg rounded-tr-md border border-white/[0.06] bg-white/[0.05] px-4 py-3">
         <p className="flex items-center justify-between gap-2">
           <span className="eyebrow">You</span>
           {place && <span className="font-mono text-[12px] text-mute">{place}</span>}
@@ -180,7 +180,7 @@ export default function AssistantPanel(props: Props) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <span
-              className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${
+              className={`flex size-9 shrink-0 items-center justify-center rounded-md ${
                 constrained ? "bg-cyan/15 text-cyan" : "bg-amber/15 text-amber"
               }`}
             >
@@ -213,7 +213,7 @@ export default function AssistantPanel(props: Props) {
       <ol className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5" aria-live="polite">
         {session.thread.length === 0 && !ask.isPending && (
           <li className="fade my-auto flex flex-col items-center gap-3 px-4 text-center text-[13px] text-mute">
-            <span className="flex size-11 items-center justify-center rounded-2xl bg-white/[0.05]">
+            <span className="flex size-11 items-center justify-center rounded-lg bg-white/[0.05]">
               <Chat className="size-5" />
             </span>
             {constrained
@@ -246,7 +246,7 @@ export default function AssistantPanel(props: Props) {
       >
         <p className="flex items-center gap-2 text-[12.5px] text-mute">
           <span
-            className={`size-1.5 rounded-full ${sending ? "bg-cyan shadow-[0_0_8px_rgb(92_200_232/0.9)]" : "bg-mute/50"}`}
+            className={`size-1.5 rounded-full ${sending ? "bg-cyan" : "bg-mute/50"}`}
           />
           {sending ? (
             <>
@@ -264,7 +264,7 @@ export default function AssistantPanel(props: Props) {
             <textarea
               ref={inputRef}
               rows={1}
-              className={`${INPUT} block max-h-40 min-h-12 resize-none py-3 [field-sizing:content]`}
+              className={`${INPUT} block max-h-40 min-h-9 resize-none py-3 [field-sizing:content]`}
               value={question}
               aria-invalid={tooLong}
               placeholder={constrained ? "Ask about the selected lines" : "Ask about this code"}
@@ -280,7 +280,7 @@ export default function AssistantPanel(props: Props) {
           <Button
             type="submit"
             tone={constrained ? "cyan" : "amber"}
-            className="min-h-12 px-4"
+            className="min-h-9 px-4"
             disabled={!canAsk}
             aria-label="Send question"
           >

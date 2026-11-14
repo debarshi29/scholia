@@ -106,7 +106,7 @@ function Card(props: {
 function More(props: { label: string; children: ReactNode }) {
   return (
     <details className="group mt-1">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-[13px] text-cyan transition hover:brightness-125 [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-[13px] text-cyan transition hover:brightness-125 [&::-webkit-details-marker]:hidden">
         <Chevron className="size-4 -rotate-90 transition-transform duration-200 group-open:rotate-0" />
         {props.label}
       </summary>
@@ -134,7 +134,7 @@ function BugRow({ bug }: { bug: DebriefBug }) {
         </p>
         {f && (
           <More label="Your finding and the judge's scores">
-            <div className="rounded-xl border border-line border-l-[3px] border-l-coral bg-bg/70 p-3.5">
+            <div className="rounded-md border border-line border-l-[3px] border-l-coral bg-bg/70 p-3.5">
               <p className="font-mono text-[12px] text-mute">
                 You flagged {baseName(f.file)} {lref(f.line_from, f.line_to)} ·{" "}
                 {CATEGORY_LABEL[f.category]}
@@ -256,7 +256,7 @@ function Changes({ d, index }: { d: DebriefData; index: number }) {
       </p>
       <Link
         to="/"
-        className="mt-5 flex min-h-12 items-center justify-center gap-2 rounded-xl border border-cyan/60 font-semibold text-cyan transition duration-200 hover:-translate-y-px hover:border-cyan hover:bg-cyan/10"
+        className="mt-5 flex min-h-9 items-center justify-center gap-2 rounded-md border border-cyan/60 font-semibold text-cyan transition duration-200 hover:-translate-y-px hover:border-cyan hover:bg-cyan/10"
       >
         See the next picks
       </Link>
@@ -285,11 +285,11 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
 
   return (
     <div className="min-h-full">
-      <header className="topbar sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 px-5 py-2.5">
+      <header className="topbar sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 px-4 py-1.5">
         <div className="flex min-w-0 items-center gap-4">
           <Link
             to="/"
-            className="flex min-h-11 items-center gap-1.5 rounded-xl px-2.5 text-mute transition hover:bg-white/5 hover:text-ink"
+            className="flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-mute transition hover:bg-white/5 hover:text-ink"
           >
             <ArrowLeft className="size-4" />
             Library
@@ -303,7 +303,7 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
             </h1>
           </div>
         </div>
-        <Button className="group min-h-12" disabled={next.isPending} onClick={() => next.mutate()}>
+        <Button className="group min-h-9" disabled={next.isPending} onClick={() => next.mutate()}>
           {next.isPending ? "Picking…" : "Next problem"}
           <ArrowRight className="size-[18px] transition-transform duration-200 group-hover:translate-x-1" />
         </Button>
@@ -313,7 +313,7 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
         {next.isError && <Notice tone="coral">{errorText(next.error)}</Notice>}
         {regrade.isError && <Notice tone="coral">{errorText(regrade.error)}</Notice>}
         {needsJudge && (
-          <div className="fade flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber/35 bg-amber/10 px-4 py-2.5 text-amber">
+          <div className="fade flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber/35 bg-amber/10 px-4 py-2.5 text-amber">
             <p className="text-[13px]">
               {d.judge_model
                 ? "The judge gave no valid answer for some items, so they are ungraded. Nothing was guessed."
@@ -482,7 +482,7 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
                     : "The judge left no notes for this session."}
                 </p>
               )}
-              <div className="rounded-xl border border-white/[0.05] bg-white/[0.03] px-4 py-3.5">
+              <div className="rounded-md border border-white/[0.05] bg-white/[0.03] px-4 py-3.5">
                 <p className="flex items-center justify-between gap-2 text-[13px] text-mute">
                   Design notes
                   {d.design.score != null && <Chip mono>{d.design.score} of 3</Chip>}
@@ -554,7 +554,7 @@ export default function Debrief({ id }: { id: string }) {
           </Notice>
           <Link
             to={`/session/${id}`}
-            className="inline-flex min-h-11 items-center text-cyan underline"
+            className="inline-flex min-h-9 items-center text-cyan underline"
           >
             Back to the session
           </Link>

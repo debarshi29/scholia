@@ -74,7 +74,7 @@ export default function DiffView({ diff }: { diff: string }) {
   const files = parseDiff(diff);
   if (files.length === 0) {
     return (
-      <pre className="overflow-x-auto rounded-xl border border-line bg-bg p-3 font-mono text-[12px] text-mute">
+      <pre className="overflow-x-auto rounded-md border border-line bg-bg p-3 font-mono text-[12px] text-mute">
         {diff}
       </pre>
     );
@@ -82,7 +82,7 @@ export default function DiffView({ diff }: { diff: string }) {
   return (
     <div className="flex flex-col gap-3">
       {files.map((file) => (
-        <figure key={file.path} className="overflow-hidden rounded-xl border border-line bg-bg">
+        <figure key={file.path} className="overflow-hidden rounded-md border border-line bg-bg">
           <figcaption className="flex items-center justify-between gap-3 border-b border-line bg-white/[0.03] px-3.5 py-2">
             <span className="truncate font-mono text-[12.5px]">{file.path}</span>
             <span className="flex shrink-0 items-center gap-2.5 font-mono text-[12px]">

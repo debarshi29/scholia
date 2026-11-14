@@ -33,7 +33,7 @@ function SubmitControl(props: {
   if (!confirming) {
     return (
       <Button
-        className="group min-h-12"
+        className="group min-h-9"
         disabled={props.blocker !== null}
         title={props.blocker ?? undefined}
         onClick={() => setConfirming(true)}
@@ -45,12 +45,12 @@ function SubmitControl(props: {
   }
   return (
     <div className="fade flex items-center gap-2" role="group" aria-label="Confirm submit">
-      <Button tone="green" className="min-h-12" disabled={props.pending} onClick={props.onSubmit}>
+      <Button tone="green" className="min-h-9" disabled={props.pending} onClick={props.onSubmit}>
         {props.pending
           ? "Submitting…"
           : `Submit ${props.count === 0 ? "with no findings" : plural(props.count, "finding")}`}
       </Button>
-      <Button tone="mute" variant="outline" className="min-h-12" onClick={() => setConfirming(false)}>
+      <Button tone="mute" variant="outline" className="min-h-9" onClick={() => setConfirming(false)}>
         Keep working
       </Button>
     </div>
@@ -152,11 +152,11 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
 
   return (
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)]">
-      <header className="topbar relative flex flex-wrap items-center justify-between gap-x-5 gap-y-2 px-5 py-2.5">
+      <header className="topbar relative flex flex-wrap items-center justify-between gap-x-5 gap-y-2 px-4 py-1.5">
         <div className="flex min-w-0 items-center gap-4">
           <Link
             to="/"
-            className="flex min-h-11 items-center gap-1.5 rounded-xl px-2.5 text-mute transition hover:bg-white/5 hover:text-ink"
+            className="flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-mute transition hover:bg-white/5 hover:text-ink"
           >
             <ArrowLeft className="size-4" />
             Library
@@ -181,9 +181,9 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
             className="flex items-baseline gap-2.5"
           >
             <span
-              className={`font-mono text-[1.9rem] leading-none font-medium tabular-nums transition-colors duration-500 ${
+              className={`font-mono text-[1.4rem] leading-none font-medium tabular-nums transition-colors duration-500 ${
                 over || low ? "text-coral" : "text-amber"
-              } ${over ? "" : "drop-shadow-[0_0_14px_rgb(242_178_74/0.35)]"}`}
+              } ${over ? "" : ""}`}
             >
               {clock(left)}
             </span>
@@ -218,8 +218,8 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
           <span
             className={`block h-full transition-[width] duration-1000 ease-linear ${
               over || low
-                ? "bg-coral shadow-[0_0_10px_rgb(255_122_107/0.8)]"
-                : "bg-amber shadow-[0_0_10px_rgb(242_178_74/0.7)]"
+                ? "bg-coral"
+                : "bg-amber"
             }`}
             style={{ width: `${elapsedShare * 100}%` }}
           />
@@ -244,9 +244,9 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
                       aria-current={current ? "true" : undefined}
                       onClick={() => open(f.path)}
                       title={f.path}
-                      className={`relative flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 text-left font-mono text-[12.5px] transition ${
+                      className={`relative flex min-h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left font-mono text-[12.5px] transition ${
                         current
-                          ? "bg-white/[0.07] text-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]"
+                          ? "bg-white/[0.07] text-ink"
                           : "text-mute hover:bg-white/[0.04] hover:text-ink"
                       }`}
                     >
@@ -263,7 +263,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
                       {edits[f.path] !== undefined && (
                         <span
                           title="Edited: part of your fix"
-                          className="size-2 rounded-full bg-green shadow-[0_0_8px_rgb(111_208_140/0.7)]"
+                          className="size-2 rounded-full bg-green"
                         />
                       )}
                       <span className="text-[11.5px] text-mute/80">{lineCounts[f.path]}</span>
@@ -273,7 +273,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
               })}
             </ul>
           </div>
-          <section className="rounded-2xl border border-white/[0.05] bg-white/[0.03] px-3.5 py-3.5 text-[12.5px] leading-relaxed text-mute">
+          <section className="rounded-lg border border-line px-3 py-3 text-[12px] leading-relaxed text-mute">
             <h2 className="eyebrow mb-2.5">Session rules</h2>
             <ul className="flex flex-col gap-2.5">
               <li className={rule}>
@@ -295,7 +295,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
         </nav>
 
         <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]">
-          <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-line bg-panel/60 px-5 py-1.5">
+          <div className="flex min-h-10 items-center justify-between gap-3 border-b border-line bg-panel/60 px-4 py-1">
             <p className="flex min-w-0 items-baseline gap-3" title={active.path}>
               <span className="truncate font-mono text-[13px]">{active.path}</span>
               <span className="shrink-0 text-[12.5px] text-mute">
@@ -341,8 +341,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
               </p>
             ) : (
               <p key="hint" className="fade text-[12.5px] text-mute">
-                Click a line number, then another, to select a range.{" "}
-                {constrained ? "The assistant sees only what you send it." : ""}
+                Click two line numbers to select a range.
               </p>
             )}
           </div>
