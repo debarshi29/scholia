@@ -4,14 +4,14 @@ from typing import Any
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from api.db import CategoryStatRow, SessionRow, utcnow
+from api.db import ProfileStatRow, SessionRow, utcnow
 from schema import BugCategory, OutcomeStatus
 
 
 async def apply_session(
     db: AsyncSession, session: SessionRow, bugs: list[tuple[BugCategory, OutcomeStatus]]
 ) -> list[dict[str, Any]]:
-    """Add this session's key bugs to ``category_stats`` exactly once.
+    """Add this session's key bugs to its profile's ``profile_stats`` exactly once.
 
     Each key bug is one attempt in its category; a ``missed`` bug is also one miss.
     The before/after numbers are stored on the session, which doubles as the
@@ -27,9 +27,9 @@ async def apply_session(
         misses[category] = misses.get(category, 0) + (status is OutcomeStatus.MISSED)
     delta: list[dict[str, Any]] = []
     for category in sorted(attempts, key=lambda c: c.value):
-        row = await db.get(CategoryStatRow, category)
+        row = await db.get(ProfileStatRow, (session.profile_id, category))
         if row is None:
-            row = CategoryStatRow(category=category)
+            row = ProfileStatRow(profile_id=session.profile_id, category=category)
         before = (row.attempts, row.misses)
         row.attempts += attempts[category]
         row.misses += misses[category]

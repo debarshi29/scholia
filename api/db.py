@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import Request
-from sqlalchemy import JSON, Column, ForeignKeyConstraint, UniqueConstraint, event
+from sqlalchemy import JSON, Column, ForeignKeyConstraint, UniqueConstraint, event, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlmodel import Field, SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -24,6 +24,37 @@ def utcnow() -> datetime:
 def as_utc(value: datetime) -> datetime:
     """SQLite returns naive datetimes; everything stored here is UTC."""
     return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+
+DEFAULT_PROFILE = "default"
+
+
+class ProfileRow(SQLModel, table=True):
+    """A local profile: a name, session defaults and (through ``profile_stats`` and
+    ``sessions.profile_id``) its own history. There is no login: it is a way to keep
+    several people's, or several goals', progress apart on one machine."""
+
+    __tablename__ = "profiles"
+
+    id: str = Field(primary_key=True)
+    name: str
+    created_at: datetime = Field(default_factory=utcnow)
+    default_mode: AssistantMode | None = None
+    default_ctx_cap: int | None = Field(default=None, ge=256)
+    default_q_budget: int | None = Field(default=None, ge=0)
+    """``None`` means the server default from config."""
+
+
+class ProfileStatRow(SQLModel, table=True):
+    """Per-profile miss counts by category (replaces the single global ``category_stats``)."""
+
+    __tablename__ = "profile_stats"
+
+    profile_id: str = Field(foreign_key="profiles.id", primary_key=True)
+    category: BugCategory = Field(primary_key=True)
+    attempts: int = Field(default=0, ge=0)
+    misses: int = Field(default=0, ge=0)
+    updated_at: datetime = Field(default_factory=utcnow)
 
 
 class ProblemRow(SQLModel, table=True):
@@ -51,6 +82,7 @@ class SessionRow(SQLModel, table=True):
     problem_id: str = Field(index=True)
     problem_version: int
     mode: AssistantMode
+    profile_id: str = Field(default=DEFAULT_PROFILE)
     ctx_cap: int
     q_budget: int
     started_at: datetime = Field(default_factory=utcnow)
@@ -188,6 +220,30 @@ def make_engine(url: str) -> AsyncEngine:
 async def init_db(engine: AsyncEngine) -> None:
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
+        # ``create_all`` never alters a table that exists: add what later versions need.
+        columns = {row[1] for row in (await conn.execute(text("PRAGMA table_info(sessions)")))}
+        if "profile_id" not in columns:
+            await conn.execute(
+                text(
+                    "ALTER TABLE sessions ADD COLUMN profile_id TEXT NOT NULL "
+                    f"DEFAULT '{DEFAULT_PROFILE}'"
+                )
+            )
+        # The first start with profiles: everything so far belongs to the default profile.
+        if (await conn.execute(text("SELECT count(*) FROM profiles"))).scalar_one() == 0:
+            now = utcnow().isoformat(sep=" ")
+            await conn.execute(
+                text("INSERT INTO profiles (id, name, created_at) VALUES (:id, 'Default', :now)"),
+                {"id": DEFAULT_PROFILE, "now": now},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO profile_stats "
+                    "(profile_id, category, attempts, misses, updated_at) "
+                    "SELECT :id, category, attempts, misses, updated_at FROM category_stats"
+                ),
+                {"id": DEFAULT_PROFILE},
+            )
 
 
 async def session_scope(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:

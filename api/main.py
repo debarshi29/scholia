@@ -19,6 +19,7 @@ from api.errors import (
     validation_error_handler,
 )
 from api.log import configure_logging
+from api.profiles import router as profiles_router
 from api.sessions import router as sessions_router
 from corpus.publish import register, scan
 
@@ -48,6 +49,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(ApiError, api_error_handler)
     app.add_exception_handler(StarletteHTTPException, http_error_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)
+    app.include_router(profiles_router)
     app.include_router(sessions_router)
     app.include_router(debrief_router)
 

@@ -3,6 +3,7 @@ import { useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 
 export type Route =
   | { page: "library" }
+  | { page: "profiles" }
   | { page: "session"; id: string }
   | { page: "debrief"; id: string }
   | { page: "not-found" };
@@ -10,6 +11,7 @@ export type Route =
 export function parseRoute(pathname: string): Route {
   const parts = pathname.split("/").filter(Boolean);
   if (parts.length === 0) return { page: "library" };
+  if (parts.length === 1 && parts[0] === "profiles") return { page: "profiles" };
   const [head, id] = parts;
   if (parts.length === 2 && id && (head === "session" || head === "debrief")) {
     return { page: head, id: decodeURIComponent(id) };
