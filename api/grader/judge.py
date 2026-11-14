@@ -46,6 +46,11 @@ class FindingScore(_Scored):
     notes: str = Field(default="", max_length=1000)
 
 
+class PatchScore(_Scored):
+    fix: int = Field(ge=0, le=2)
+    notes: str = Field(default="", max_length=1000)
+
+
 class DesignScore(_Scored):
     score: int = Field(ge=0, le=3)
     notes: str = Field(default="", max_length=1000)
@@ -71,6 +76,17 @@ def render_finding(bug: Bug, finding: Finding, code: str) -> str:
     )
 
 
+def render_patch(bug: Bug, user_diff: str) -> str:
+    return (
+        "## ANSWER KEY\n"
+        f"File: {bug.file}, lines {bug.lines[0]}-{bug.lines[1]}\n"
+        f"Mechanism: {bug.mechanism}\n"
+        f"Reference fix:\n```diff\n{bug.fix_diff}\n```\n\n"
+        "## CANDIDATE\n"
+        f"Their change to the same buggy file:\n```diff\n{user_diff}\n```\n"
+    )
+
+
 def render_design(reference: list[str], notes: str) -> str:
     points = "\n".join(f"- {r}" for r in reference)
     return f"## REFERENCE NOTES\n{points}\n\n## CANDIDATE\n{notes}\n"
@@ -85,6 +101,7 @@ class Judge:
         self.finding_prompt = load_prompt("judge_finding")
         self.design_prompt = load_prompt("judge_design")
         self.audit_prompt = load_prompt("audit")
+        self.patch_prompt = load_prompt("judge_patch")
 
     @property
     def model(self) -> str | None:
@@ -116,6 +133,9 @@ class Judge:
 
     async def score_finding(self, bug: Bug, finding: Finding, code: str) -> FindingScore | None:
         return await self.ask(self.finding_prompt, render_finding(bug, finding, code), FindingScore)
+
+    async def score_patch(self, bug: Bug, user_diff: str) -> PatchScore | None:
+        return await self.ask(self.patch_prompt, render_patch(bug, user_diff), PatchScore)
 
     async def score_design(self, reference: list[str], notes: str) -> DesignScore | None:
         return await self.ask(self.design_prompt, render_design(reference, notes), DesignScore)
