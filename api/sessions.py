@@ -87,8 +87,10 @@ def pick_problem(
 
 
 class ProblemCard(BaseModel):
-    """A library entry. Deliberately has no category, upstream id or commit: with one bug
-    per problem, any of those would point at the answer."""
+    """A library entry. It has no upstream id or commit, which would lead straight to the
+    fix. It does carry ``categories``: the owner asked for the Library to be grouped by bug
+    category (14 Nov 2026), knowing that with one bug per problem this names the kind of
+    bug before the session. Nothing else from the answer key is here."""
 
     id: str
     version: int
@@ -98,6 +100,7 @@ class ProblemCard(BaseModel):
     licence: str
     files: list[str]
     lines: int
+    categories: list[BugCategory]
     attempts: int
     last_attempt_at: datetime | None
     best_found: int | None
@@ -329,6 +332,7 @@ async def list_problems(db: Db, store: Store) -> list[ProblemCard]:
                 licence=meta.licence,
                 files=p.files,
                 lines=p.lines,
+                categories=[BugCategory(c) for c in p.categories],
                 attempts=n,
                 last_attempt_at=as_utc(last) if last else None,
                 best_found=found,
