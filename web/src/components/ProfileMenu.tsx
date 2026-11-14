@@ -76,9 +76,9 @@ export default function ProfileMenu() {
                   role="menuitemradio"
                   aria-checked={p.id === id}
                   onClick={() => choose(p)}
-                  className="flex min-h-9 w-full items-center gap-2.5 rounded-md px-2 text-left text-[13px] transition hover:bg-white/[0.05]"
+                  className="flex min-h-9 w-full items-center gap-2.5 rounded-md px-2 text-left text-[13px] transition hover:bg-ink/[0.05]"
                 >
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded bg-white/[0.07] font-mono text-[11px] text-mute">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded bg-ink/[0.07] font-mono text-[11px] text-mute">
                     {initial(p.name)}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{p.name}</span>
@@ -96,7 +96,7 @@ export default function ProfileMenu() {
                 setOpen(false);
                 navigate("/profiles");
               }}
-              className="flex min-h-9 w-full items-center rounded-md px-2 text-left text-[13px] text-mute transition hover:bg-white/[0.05] hover:text-ink"
+              className="flex min-h-9 w-full items-center rounded-md px-2 text-left text-[13px] text-mute transition hover:bg-ink/[0.05] hover:text-ink"
             >
               Manage profiles…
             </button>

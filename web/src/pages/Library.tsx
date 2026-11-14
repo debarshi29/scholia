@@ -1,5 +1,6 @@
 // Library (home): a spotlight row that reshuffles, weak spots, and every problem as a
 // compact tile, grouped by bug category or by project, with the session setup panel.
+import ThemeToggle from "../components/ThemeToggle";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import ProfileMenu from "../components/ProfileMenu";
@@ -72,11 +73,12 @@ function Header({ sessions }: { sessions: SessionSummary[] }) {
             Resume {resume.problem_id}
           </Link>
         )}
+        <ThemeToggle />
         <ProfileMenu />
         {lastDebrief && (
           <Link
             to={`/debrief/${lastDebrief.id}`}
-            className="flex min-h-9 items-center rounded-md px-3.5 text-mute transition hover:bg-white/5 hover:text-ink"
+            className="flex min-h-9 items-center rounded-md px-3.5 text-mute transition hover:bg-ink/5 hover:text-ink"
           >
             Last debrief
           </Link>
@@ -93,7 +95,7 @@ const AVATAR = [
   "bg-amber/15 text-amber",
   "bg-green/15 text-green",
   "bg-coral/15 text-coral",
-  "bg-[#b79cf2]/15 text-[#b79cf2]",
+  "bg-ink/10 text-ink",
 ];
 
 function repoName(p: ProblemCard): string {
@@ -398,7 +400,7 @@ function Stepper(props: {
         >
           −
         </button>
-        <output className="w-[5.5rem] text-center font-mono text-[13px] whitespace-nowrap" aria-live="polite">
+        <output className="w-[4.5rem] text-center font-mono text-[13px] whitespace-nowrap" aria-live="polite">
           {props.display}
         </output>
         <button
@@ -507,7 +509,7 @@ function Setup(props: {
             disabled={!constrained}
             onChange={setBudget}
           />
-          <div className="mt-1 flex items-center justify-between border-t border-white/[0.06] pt-3.5">
+          <div className="mt-1 flex items-center justify-between border-t border-line pt-3.5">
             <span className="flex items-center gap-2.5">
               <Clock className="size-4 text-mute" />
               Timer
@@ -664,14 +666,14 @@ export default function Library() {
                           onClick={() => setSource(f.value)}
                           className={`flex min-h-9 items-center gap-2 rounded-md px-3 text-[13px] font-medium transition duration-150 ${
                             on
-                              ? "bg-gradient-to-b from-[#74d6f2] to-[#49b9dc] text-bg "
-                              : "border border-line text-ink hover:border-mute/60 hover:bg-white/[0.04]"
+                              ? " bg-cyan text-on "
+                              : "border border-line text-ink hover:border-mute/60 hover:bg-ink/[0.04]"
                           }`}
                         >
                           {f.label}
                           <span
                             className={`rounded-full px-1.5 py-0.5 font-mono text-[11.5px] leading-none ${
-                              on ? "bg-bg/20" : "bg-white/[0.07] text-mute"
+                              on ? "bg-bg/20" : "bg-ink/[0.07] text-mute"
                             }`}
                           >
                             {count(f.value)}
@@ -702,11 +704,11 @@ export default function Library() {
                     <section key={g.key} aria-label={g.label}>
                       <h3 className="mb-2.5 flex items-center gap-3">
                         <span className="font-semibold">{g.label}</span>
-                        <span className="rounded-full bg-white/[0.07] px-2 py-0.5 font-mono text-[11.5px] leading-none text-mute">
+                        <span className="rounded-full bg-ink/[0.07] px-2 py-0.5 font-mono text-[11.5px] leading-none text-mute">
                           {g.problems.length}
                         </span>
                         {g.note}
-                        <span className="h-px flex-1 bg-white/[0.06]" aria-hidden="true" />
+                        <span className="h-px flex-1 bg-ink/[0.06]" aria-hidden="true" />
                       </h3>
                       <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
                         {g.problems.map((p) => (

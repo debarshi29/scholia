@@ -83,7 +83,7 @@ export default function DiffView({ diff }: { diff: string }) {
     <div className="flex flex-col gap-3">
       {files.map((file) => (
         <figure key={file.path} className="overflow-hidden rounded-md border border-line bg-bg">
-          <figcaption className="flex items-center justify-between gap-3 border-b border-line bg-white/[0.03] px-3.5 py-2">
+          <figcaption className="flex items-center justify-between gap-3 border-b border-line bg-ink/[0.03] px-3.5 py-2">
             <span className="truncate font-mono text-[12.5px]">{file.path}</span>
             <span className="flex shrink-0 items-center gap-2.5 font-mono text-[12px]">
               <span className="text-green">+{file.added}</span>
@@ -95,10 +95,10 @@ export default function DiffView({ diff }: { diff: string }) {
               <tbody>
                 {file.rows.map((row, i) => (
                   <tr key={i} className={ROW[row.kind]}>
-                    <td className="w-12 border-r border-white/[0.05] px-2 text-right text-mute/60 select-none">
+                    <td className="w-12 border-r border-line px-2 text-right text-mute/60 select-none">
                       {row.oldNo ?? ""}
                     </td>
-                    <td className="w-12 border-r border-white/[0.05] px-2 text-right text-mute/60 select-none">
+                    <td className="w-12 border-r border-line px-2 text-right text-mute/60 select-none">
                       {row.newNo ?? ""}
                     </td>
                     <td className={`w-6 text-center select-none ${SIGN_TONE[row.kind]}`}>

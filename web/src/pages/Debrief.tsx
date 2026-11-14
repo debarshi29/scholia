@@ -1,6 +1,7 @@
 // Debrief board: five stat tiles, the answer key against your report, what the assistant
 // told you, judge notes and what the session changes. The server returns none of this
 // until the session is submitted and graded.
+import ThemeToggle from "../components/ThemeToggle";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import {
@@ -54,8 +55,8 @@ const ACCENT: Record<Ink, string> = {
   amber: "from-amber/70",
   coral: "from-coral/70",
   green: "from-green/70",
-  ink: "from-white/25",
-  mute: "from-white/15",
+  ink: "from-ink/25",
+  mute: "from-ink/15",
 };
 
 const STATUS: Record<OutcomeStatus, { label: string; tone: Tone }> = {
@@ -116,7 +117,7 @@ function More(props: { label: string; children: ReactNode }) {
 }
 
 const ROW =
-  "grid grid-cols-[9rem_minmax(0,1fr)_auto] items-start gap-4 border-t border-white/[0.06] px-2 py-4 transition-colors hover:bg-white/[0.02]";
+  "grid grid-cols-[9rem_minmax(0,1fr)_auto] items-start gap-4 border-t border-line px-2 py-4 transition-colors hover:bg-ink/[0.02]";
 
 function BugRow({ bug }: { bug: DebriefBug }) {
   const f = bug.finding;
@@ -189,7 +190,7 @@ function Told({ a }: { a: DebriefAudit }) {
       : baseName(a.file)
     : "whole problem";
   return (
-    <li className="border-t border-white/[0.06] py-4">
+    <li className="border-t border-line py-4">
       <p className="flex items-center justify-between gap-3">
         <span className="font-mono text-[12.5px] text-mute">
           Q{a.seq} · {where}
@@ -289,7 +290,7 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
         <div className="flex min-w-0 items-center gap-4">
           <Link
             to="/"
-            className="flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-mute transition hover:bg-white/5 hover:text-ink"
+            className="flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-mute transition hover:bg-ink/5 hover:text-ink"
           >
             <ArrowLeft className="size-4" />
             Library
@@ -303,10 +304,13 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
             </h1>
           </div>
         </div>
-        <Button className="group min-h-9" disabled={next.isPending} onClick={() => next.mutate()}>
-          {next.isPending ? "Picking…" : "Next problem"}
-          <ArrowRight className="size-[18px] transition-transform duration-200 group-hover:translate-x-1" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button className="group min-h-9" disabled={next.isPending} onClick={() => next.mutate()}>
+            {next.isPending ? "Picking…" : "Next problem"}
+            <ArrowRight className="size-[18px] transition-transform duration-200 group-hover:translate-x-1" />
+          </Button>
+        </div>
       </header>
 
       <div className="mx-auto flex max-w-[1500px] flex-col gap-5 px-6 py-7">
@@ -408,7 +412,7 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
             note="Each answer checked against the answer key."
           >
             {d.audits.length === 0 ? (
-              <p className="border-t border-white/[0.06] pt-4 text-mute">
+              <p className="border-t border-line pt-4 text-mute">
                 No answered questions in this session
                 {t.refusals > 0 ? ` (${t.refusals} refused)` : ""}.
               </p>
@@ -482,7 +486,7 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
                     : "The judge left no notes for this session."}
                 </p>
               )}
-              <div className="rounded-md border border-white/[0.05] bg-white/[0.03] px-4 py-3.5">
+              <div className="rounded-md border border-line bg-ink/[0.03] px-4 py-3.5">
                 <p className="flex items-center justify-between gap-2 text-[13px] text-mute">
                   Design notes
                   {d.design.score != null && <Chip mono>{d.design.score} of 3</Chip>}

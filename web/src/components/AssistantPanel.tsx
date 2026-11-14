@@ -95,7 +95,7 @@ function Pips({ used, budget }: { used: number; budget: number }) {
             <span
               key={i}
               className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${
-                i < used ? "bg-cyan" : "bg-white/[0.08]"
+                i < used ? "bg-cyan" : "bg-ink/[0.08]"
               }`}
             />
           ))}
@@ -115,7 +115,7 @@ function Exchange({ item, amber }: { item: ThreadItem; amber: boolean }) {
   const place = where(item);
   return (
     <li className="rise flex flex-col gap-3">
-      <div className="ml-6 rounded-lg rounded-tr-md border border-white/[0.06] bg-white/[0.05] px-4 py-3">
+      <div className="ml-6 rounded-lg rounded-tr-md border border-line bg-ink/[0.05] px-4 py-3">
         <p className="flex items-center justify-between gap-2">
           <span className="eyebrow">You</span>
           {place && <span className="font-mono text-[12px] text-mute">{place}</span>}
@@ -213,7 +213,7 @@ export default function AssistantPanel(props: Props) {
       <ol className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5" aria-live="polite">
         {session.thread.length === 0 && !ask.isPending && (
           <li className="fade my-auto flex flex-col items-center gap-3 px-4 text-center text-[13px] text-mute">
-            <span className="flex size-11 items-center justify-center rounded-lg bg-white/[0.05]">
+            <span className="flex size-11 items-center justify-center rounded-lg bg-ink/[0.05]">
               <Chat className="size-5" />
             </span>
             {constrained

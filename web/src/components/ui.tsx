@@ -6,10 +6,10 @@ import { ApiError } from "../api/client";
 export type Tone = "cyan" | "amber" | "coral" | "green" | "mute";
 
 const SOLID: Record<Tone, string> = {
-  cyan: "bg-cyan text-bg hover:bg-[#7fd6ef]",
-  amber: "bg-amber text-bg hover:bg-[#f5c36a]",
-  coral: "bg-coral text-bg hover:bg-[#ff9285]",
-  green: "bg-green text-bg hover:bg-[#8adca2]",
+  cyan: "bg-cyan text-on hover:opacity-90",
+  amber: "bg-amber text-on hover:opacity-90",
+  coral: "bg-coral text-on hover:opacity-90",
+  green: "bg-green text-on hover:opacity-90",
   mute: "bg-raised text-ink hover:bg-line",
 };
 
@@ -50,7 +50,7 @@ const CHIP: Record<Tone, string> = {
   amber: "border-amber/30 bg-amber/10 text-amber",
   coral: "border-coral/30 bg-coral/10 text-coral",
   green: "border-green/30 bg-green/10 text-green",
-  mute: "border-line bg-white/[0.04] text-mute",
+  mute: "border-line bg-ink/[0.04] text-mute",
 };
 const DOT: Record<Tone, string> = {
   cyan: "bg-cyan",
@@ -184,7 +184,7 @@ export function Segmented<T extends string>(props: {
             onClick={() => props.onChange?.(o.value)}
             className={`relative z-10 rounded-md font-medium whitespace-nowrap transition-colors duration-200 disabled:cursor-not-allowed ${
               props.compact ? "min-h-8 px-3 text-[12.5px]" : "min-h-9 px-4 text-[13px]"
-            } ${checked ? "text-bg" : "text-mute enabled:hover:text-ink disabled:opacity-55"}`}
+            } ${checked ? "text-on" : "text-mute enabled:hover:text-ink disabled:opacity-55"}`}
           >
             {o.label}
           </button>
