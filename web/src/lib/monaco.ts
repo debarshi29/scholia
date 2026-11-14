@@ -14,42 +14,78 @@ import "monaco-editor/languages/definitions/python/register";
 import "../../node_modules/monaco-editor/esm/vs/base/browser/ui/codicons/codicon/codicon.css";
 import "../../node_modules/monaco-editor/esm/vs/base/browser/ui/codicons/codicon/codicon-modifiers.css";
 
-export const THEME = "scholia";
+export const THEMES = { light: "scholia-light", dark: "scholia-dark" } as const;
 
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
 
-monaco.editor.defineTheme(THEME, {
+// The Paper palette (src/index.css). Monaco needs literal colours, so they are repeated here.
+monaco.editor.defineTheme(THEMES.light, {
+  base: "vs",
+  inherit: true,
+  rules: [
+    { token: "comment", foreground: "8a8170", fontStyle: "italic" },
+    { token: "keyword", foreground: "8a3fb0" },
+    { token: "identifier", foreground: "2b261f" },
+    { token: "delimiter", foreground: "6b6358" },
+    { token: "tag", foreground: "1e6e78" },
+    { token: "string", foreground: "2f6b4f" },
+    { token: "number", foreground: "9a5b00" },
+    { token: "type", foreground: "1f5fa8" },
+  ],
+  colors: {
+    "editor.background": "#fffdf9",
+    "editor.foreground": "#2b261f",
+    "editorLineNumber.foreground": "#b3a995",
+    "editorLineNumber.activeForeground": "#1f1b16",
+    "editor.lineHighlightBackground": "#f7f4ee",
+    "editor.lineHighlightBorder": "#00000000",
+    "editor.selectionBackground": "#1e6e7833",
+    "editor.inactiveSelectionBackground": "#1e6e7826",
+    "editor.wordHighlightBackground": "#1e6e7822",
+    "editorCursor.foreground": "#1e6e78",
+    "editorIndentGuide.background1": "#ebe4d6",
+    "editorWidget.background": "#f1ece2",
+    "editorWidget.border": "#e2dacb",
+    "input.background": "#fffdf9",
+    "input.border": "#e2dacb",
+    "focusBorder": "#1e6e78",
+    "scrollbarSlider.background": "#6b635866",
+    "scrollbarSlider.hoverBackground": "#6b6358aa",
+  },
+});
+
+monaco.editor.defineTheme(THEMES.dark, {
   base: "vs-dark",
   inherit: true,
   rules: [
-    { token: "comment", foreground: "6b7785", fontStyle: "italic" },
-    { token: "keyword", foreground: "c792ea" },
-    { token: "identifier", foreground: "e6eaf0" },
-    { token: "delimiter", foreground: "9aa6b5" },
-    { token: "tag", foreground: "5cc8e8" },
-    { token: "string", foreground: "6fd08c" },
-    { token: "number", foreground: "f2b24a" },
-    { token: "type", foreground: "e6eaf0" },
+    { token: "comment", foreground: "7d7262", fontStyle: "italic" },
+    { token: "keyword", foreground: "d3a1f0" },
+    { token: "identifier", foreground: "e6dccb" },
+    { token: "delimiter", foreground: "a69a86" },
+    { token: "tag", foreground: "5fb8c2" },
+    { token: "string", foreground: "a6d9a0" },
+    { token: "number", foreground: "e0b15a" },
+    { token: "type", foreground: "8fbcff" },
   ],
   colors: {
-    "editor.background": "#06080b",
-    "editor.foreground": "#e6eaf0",
-    "editorLineNumber.foreground": "#5b6675",
-    "editorLineNumber.activeForeground": "#e6eaf0",
-    "editor.lineHighlightBackground": "#0c1015",
+    "editor.background": "#1c1712",
+    "editor.foreground": "#e6dccb",
+    "editorLineNumber.foreground": "#6f6453",
+    "editorLineNumber.activeForeground": "#efe6d6",
+    "editor.lineHighlightBackground": "#211b15",
     "editor.lineHighlightBorder": "#00000000",
-    "editor.selectionBackground": "#5cc8e840",
-    "editor.inactiveSelectionBackground": "#5cc8e833",
-    "editor.wordHighlightBackground": "#5cc8e822",
-    "editorCursor.foreground": "#5cc8e8",
-    "editorIndentGuide.background1": "#141a22",
-    "editorWidget.background": "#0c1015",
-    "editorWidget.border": "#1d2530",
-    "input.background": "#06080b",
-    "input.border": "#1d2530",
-    "focusBorder": "#5cc8e8",
-    "scrollbarSlider.background": "#2a333f80",
-    "scrollbarSlider.hoverBackground": "#2a333fcc",
+    "editor.selectionBackground": "#5fb8c240",
+    "editor.inactiveSelectionBackground": "#5fb8c233",
+    "editor.wordHighlightBackground": "#5fb8c222",
+    "editorCursor.foreground": "#5fb8c2",
+    "editorIndentGuide.background1": "#2f2820",
+    "editorWidget.background": "#1f1a15",
+    "editorWidget.border": "#2f2820",
+    "input.background": "#17130f",
+    "input.border": "#2f2820",
+    "focusBorder": "#5fb8c2",
+    "scrollbarSlider.background": "#a69a8666",
+    "scrollbarSlider.hoverBackground": "#a69a86aa",
   },
 });
 

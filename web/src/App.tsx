@@ -3,6 +3,7 @@ import { Loading } from "./components/ui";
 import Library from "./pages/Library";
 import Profiles from "./pages/Profiles";
 import { Link, parseRoute, usePath } from "./router";
+import { useTheme } from "./store/theme";
 
 // Monaco is large; it loads only with the page that shows code.
 const Session = lazy(() => import("./pages/Session"));
@@ -18,6 +19,7 @@ function Page(props: { fill?: boolean; children: ReactNode }) {
 }
 
 export default function App() {
+  useTheme(); // keeps data-theme in step with the stored choice and the OS
   const route = parseRoute(usePath());
   switch (route.page) {
     case "library":

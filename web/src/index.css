@@ -3,25 +3,47 @@
 @import "@fontsource/ibm-plex-sans/600.css";
 @import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/newsreader/400.css";
+@import "@fontsource/newsreader/500.css";
+@import "@fontsource/newsreader/600.css";
+@import "@fontsource/newsreader/400-italic.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Palette as CSS variables too, for the rules written by hand below. */
+/* Paper palette. Colours are RGB channels so Tailwind's opacity modifiers work; the same
+   names serve the hand-written rules below as rgb(var(--c-ink) / 0.5). Light is the
+   default; dark applies under data-theme="dark" (set before first paint from index.html). */
 :root {
-  --color-bg: #06080b;
-  --color-panel: #0c1015;
-  --color-raised: #141a22;
-  --color-line: #1d2530;
-  --color-ink: #e6eaf0;
-  --color-mute: #9aa6b5;
-  --color-cyan: #5cc8e8;
-  --color-amber: #f2b24a;
-  --color-coral: #ff7a6b;
-  --color-green: #6fd08c;
+  --c-bg: 247 244 238;
+  --c-panel: 241 236 226;
+  --c-raised: 255 253 249;
+  --c-line: 226 218 203;
+  --c-ink: 31 27 22;
+  --c-mute: 107 99 88;
+  --c-accent: 30 110 120;
+  --c-amber: 154 91 0;
+  --c-coral: 179 54 43;
+  --c-green: 47 107 79;
+  --c-on: 255 253 249;
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: Newsreader, Georgia, ui-serif, serif;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --c-bg: 23 19 15;
+  --c-panel: 31 26 21;
+  --c-raised: 38 31 25;
+  --c-line: 47 40 32;
+  --c-ink: 239 230 214;
+  --c-mute: 166 154 134;
+  --c-accent: 95 184 194;
+  --c-amber: 224 177 90;
+  --c-coral: 255 143 128;
+  --c-green: 127 207 154;
+  --c-on: 23 19 15;
   color-scheme: dark;
 }
 
@@ -32,8 +54,8 @@
     height: 100%;
   }
   body {
-    background: var(--color-bg);
-    color: var(--color-ink);
+    background: rgb(var(--c-bg));
+    color: rgb(var(--c-ink));
     font-family: var(--font-sans);
     font-size: 14px;
     line-height: 1.5;
@@ -42,18 +64,20 @@
   }
   h1,
   h2 {
+    font-family: var(--font-serif);
+    font-weight: 500;
     letter-spacing: -0.012em;
   }
   /* A visible focus ring on everything that can take keyboard focus. */
   :focus-visible {
-    outline: 2px solid var(--color-cyan);
+    outline: 2px solid rgb(var(--c-accent));
     outline-offset: 2px;
   }
   ::selection {
-    background: color-mix(in srgb, var(--color-cyan) 30%, transparent);
+    background: rgb(var(--c-accent) / 0.3);
   }
   * {
-    scrollbar-color: #2a3442 transparent;
+    scrollbar-color: rgb(var(--c-mute) / 0.45) transparent;
     scrollbar-width: thin;
   }
   ::-webkit-scrollbar {
@@ -63,11 +87,11 @@
   ::-webkit-scrollbar-thumb {
     border: 3px solid transparent;
     border-radius: 9999px;
-    background: #3a4554;
+    background: rgb(var(--c-mute) / 0.4);
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #50607a;
+    background: rgb(var(--c-mute) / 0.7);
     background-clip: content-box;
   }
 }
@@ -75,9 +99,9 @@
 @layer components {
   /* A panel with a faint top highlight and a soft drop shadow. */
   .surface {
-    border: 1px solid var(--color-line);
+    border: 1px solid rgb(var(--c-line));
     border-radius: 10px;
-    background: var(--color-panel);
+    background: rgb(var(--c-panel));
   }
   /* A panel that reacts to the pointer. */
   .surface-hover {
@@ -88,16 +112,16 @@
       background-color 0.22s var(--ease);
   }
   .surface-hover:hover {
-    border-color: rgb(92 200 232 / 0.4);
+    border-color: rgb(var(--c-accent) / 0.4);
   }
   .surface-selected {
-    border-color: var(--color-cyan);
-    background: var(--color-raised);
+    border-color: rgb(var(--c-accent));
+    background: rgb(var(--c-raised));
   }
   /* Sticky top bars. */
   .topbar {
-    border-bottom: 1px solid var(--color-line);
-    background: rgb(6 8 11 / 0.93);
+    border-bottom: 1px solid rgb(var(--c-line));
+    background: rgb(var(--c-panel) / 0.94);
     backdrop-filter: blur(14px) saturate(1.3);
   }
   .eyebrow {
@@ -105,12 +129,12 @@
     font-weight: 500;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--color-mute);
+    color: rgb(var(--c-mute));
   }
   .bar-track {
     overflow: hidden;
     border-radius: 9999px;
-    background: rgb(255 255 255 / 0.06);
+    background: rgb(var(--c-ink) / 0.08);
   }
   .bar-fill {
     display: block;
@@ -121,16 +145,16 @@
     transition: width 0.4s var(--ease);
   }
   .bar-cyan {
-    background: linear-gradient(90deg, #3aa9cf, var(--color-cyan));
+    background: rgb(var(--c-accent));
       }
   .bar-amber {
-    background: linear-gradient(90deg, #d8922b, var(--color-amber));
+    background: rgb(var(--c-amber));
       }
   .bar-coral {
-    background: linear-gradient(90deg, #e85a4a, var(--color-coral));
+    background: rgb(var(--c-coral));
       }
   .bar-green {
-    background: linear-gradient(90deg, #45b46a, var(--color-green));
+    background: rgb(var(--c-green));
       }
   /* Content that arrives: fade up, staggered with --i. */
   .rise {
@@ -144,9 +168,9 @@
     border-radius: 12px;
     background: linear-gradient(
       100deg,
-      rgb(255 255 255 / 0.04) 30%,
-      rgb(255 255 255 / 0.09) 50%,
-      rgb(255 255 255 / 0.04) 70%
+      rgb(var(--c-ink) / 0.05) 30%,
+      rgb(var(--c-ink) / 0.1) 50%,
+      rgb(var(--c-ink) / 0.05) 70%
     );
     background-size: 220% 100%;
     animation: shimmer 1.4s linear infinite;
@@ -157,7 +181,7 @@
     height: 6px;
     margin-right: 4px;
     border-radius: 9999px;
-    background: var(--color-cyan);
+    background: rgb(var(--c-accent));
     animation: blink 1.2s ease-in-out infinite;
   }
   .typing span:nth-child(2) {
@@ -203,10 +227,10 @@
 }
 @keyframes pulse-ring {
   0% {
-    box-shadow: 0 0 0 0 rgb(255 122 107 / 0.5);
+    box-shadow: 0 0 0 0 rgb(var(--c-coral) / 0.5);
   }
   100% {
-    box-shadow: 0 0 0 9px rgb(255 122 107 / 0);
+    box-shadow: 0 0 0 9px rgb(var(--c-coral) / 0);
   }
 }
 
@@ -222,7 +246,7 @@
 
 /* Monaco: flagged lines get a coral tint and one dot in the margin per finding. */
 .flagged-line {
-  background: rgb(255 122 107 / 0.12);
+  background: rgb(var(--c-coral) / 0.12);
 }
 .flagged-dot::before {
   content: "";
@@ -233,14 +257,14 @@
   height: 8px;
   margin: -4px 0 0 -4px;
   border-radius: 9999px;
-  background: var(--color-coral);
+  background: rgb(var(--c-coral));
   }
 .monaco-editor .line-numbers {
   cursor: pointer !important;
   transition: color 0.12s ease;
 }
 .monaco-editor .line-numbers:hover {
-  color: var(--color-cyan) !important;
+  color: rgb(var(--c-accent)) !important;
 }
 
 /* Spotlight row: a line that drains until the next shuffle. */
@@ -248,7 +272,7 @@
   display: block;
   height: 100%;
   border-radius: 9999px;
-  background: linear-gradient(90deg, #3aa9cf, var(--color-cyan));
+  background: rgb(var(--c-accent));
   transform-origin: left;
   animation: countdown linear both;
 }
@@ -262,19 +286,19 @@
 }
 /* A compact problem tile. */
 .tile {
-  border: 1px solid var(--color-line);
+  border: 1px solid rgb(var(--c-line));
   border-radius: 8px;
-  background: var(--color-panel);
+  background: rgb(var(--c-panel));
   transition:
     border-color 0.15s var(--ease),
     background-color 0.15s var(--ease);
 }
 .tile:hover {
-  border-color: rgb(92 200 232 / 0.5);
-  background: var(--color-raised);
+  border-color: rgb(var(--c-accent) / 0.5);
+  background: rgb(var(--c-raised));
 }
 .tile-selected,
 .tile-selected:hover {
-  border-color: var(--color-cyan);
-  background: rgb(92 200 232 / 0.07);
+  border-color: rgb(var(--c-accent));
+  background: rgb(var(--c-accent) / 0.07);
 }
