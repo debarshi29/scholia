@@ -21,7 +21,7 @@ Owner: Debarshi. The machine is a laptop with an RTX 3050 (6 GB VRAM), so everyt
 - **Tracking**: miss rate per bug category, which weights the next problem pick.
 
 ### Explicitly NOT in v1. Do not build these unless asked.
-- Users, auth, accounts, or hosted deployment.
+- Auth, passwords, accounts, or hosted deployment. (Local profiles without a login exist since 14 Nov 2026 at the owner's request; see §7 Profiles.)
 - Languages other than Python.
 - Running code during a session. There is no run-tests button yet.
 - The Tier 1 GitHub miner, Tier 2 mutation, and Tier 3 LLM-planted bugs. These are M6 and later.
@@ -218,7 +218,9 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 | findings | id, session_id, file, line_from, line_to, category, explanation, fix |
 | outcomes | session_id, bug_id, finding_id, status (`found` / `partial` / `missed` / `extra` / `ungraded`), assisted, judge_mechanism, judge_fix, judge_notes, prompt_version |
 | claim_audits | query_id, verdict (`correct` / `wrong` / `unverifiable`), relied_on, rationale |
-| category_stats | category, attempts, misses, updated_at |
+| profiles | id, name, created_at, default_mode, default_ctx_cap, default_q_budget |
+| profile_stats | profile_id, category, attempts, misses, updated_at |
+| category_stats | category, attempts, misses, updated_at (legacy, replaced by `profile_stats`) |
 
 ---
 
@@ -271,6 +273,9 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 - Replies the judge could not label get no `claim_audits` row and show as "not audited".
 - Design notes: empty notes score 0 without calling the judge. Problems with no reference design notes (all Tier 0 problems today) are not scored for design.
 - Code from a problem whose licence is not on the allowlist is never sent to the judge (invariant 7); such sessions stay `ungraded`.
+
+### Profiles (14 Nov 2026, owner's request; an exception to "no users")
+Local profiles keep progress apart on one machine. **There is no login**: anyone at the keyboard can switch, so this separates progress, it does not protect it. The browser sends `X-Profile: <id>` on every call (stored in localStorage); a request without it is the `default` profile, so everything before profiles belongs there. A profile owns its sessions (`sessions.profile_id`), its category stats (`profile_stats`, replacing the global `category_stats`, which is kept only as the migration source) and optional defaults (mode, context window, question budget; `null` = server default). Problems, the answer key and the problem index are shared. Routes: `GET/POST /api/profiles`, `GET/PATCH/DELETE /api/profiles/{id}`, `POST /api/profiles/{id}/reset-stats`; `/api/problems`, `/api/stats`, `/api/settings`, `/api/sessions` and the picker are per profile; session ids stay global. Deleting a profile deletes its sessions, assistant logs, reports and stats; the default profile cannot be deleted. `init_db` migrates an existing database in place (adds `sessions.profile_id`, seeds the default profile with the old global stats once). The UI has a profile menu in the Library bar and a `/profiles` page.
 
 ### Tracker
 After grading, update `category_stats` from that session's key bugs (each attempt adds to attempts, each miss adds to misses). A session is counted once: the before/after numbers are stored on the session (`stats_delta`) and a regrade does not add to them.
