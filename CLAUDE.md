@@ -112,6 +112,8 @@ scholia/
   problems/                 # generated; git-ignored except problems/_seed/
   data/                     # sqlite db, logs; git-ignored
   scripts/py.cmd            # runs uv's base interpreter with the venv's packages (Smart App Control)
+  docs/                     # HLD, LLD, decision log, guides, interview questions, screenshots (Mermaid diagrams)
+  CONTRIBUTING.md SECURITY.md .github/   # workflow, security policy, PR and issue templates
   tests/
     fixtures/graded/        # hand-graded reports used to test the grader
 ```
@@ -342,6 +344,7 @@ PROBLEMS_DIR=problems
 - **Tests:** at least one test per invariant in section 5. For the grader, tests in `tests/fixtures/graded/` hold hand-graded reports with expected outcomes. LLM calls are mocked in unit tests, and real-call tests are marked `@pytest.mark.live` and skipped by default.
 - **Commits:** small and per-feature, with conventional prefixes (`feat:`, `fix:`, `test:`, `chore:`). Do not commit `.env`, `data/` or generated `problems/`.
 - When a requirement here is ambiguous, ask instead of guessing. When you find this file is wrong or outdated, say so and propose an edit.
+- **Docs stay in step with the code.** A change to behaviour, an invariant, the API or the data model updates `docs/` (HLD, LLD, decision log) in the same pull request. Diagrams are Mermaid; validate them with the Mermaid parser before merging.
 
 ---
 
