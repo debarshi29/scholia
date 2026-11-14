@@ -280,6 +280,8 @@ export interface components {
             bugs: components["schemas"]["DebriefBug"][];
             /** Extras */
             extras: components["schemas"]["DebriefFinding"][];
+            /** Patches */
+            patches: components["schemas"]["DebriefPatch"][];
             /** Audits */
             audits: components["schemas"]["DebriefAudit"][];
             design: components["schemas"]["DebriefDesign"];
@@ -342,6 +344,7 @@ export interface components {
             judge_fix: number | null;
             /** Judge Notes */
             judge_notes: string;
+            fix: components["schemas"]["DebriefFix"] | null;
         };
         /** DebriefDesign */
         DebriefDesign: {
@@ -369,6 +372,33 @@ export interface components {
             explanation: string;
             /** Fix */
             fix: string;
+        };
+        /**
+         * DebriefFix
+         * @description How the submitted code fix did against one key bug.
+         */
+        DebriefFix: {
+            /** Submitted */
+            submitted: boolean;
+            /** On Target */
+            on_target: boolean;
+            /** Syntax Error */
+            syntax_error: string | null;
+            /** Judge Fix */
+            judge_fix: number | null;
+            /** Judge Notes */
+            judge_notes: string;
+            /** Tests */
+            tests: string | null;
+            /** Tests Detail */
+            tests_detail: string;
+        };
+        /** DebriefPatch */
+        DebriefPatch: {
+            /** File */
+            file: string;
+            /** Diff */
+            diff: string;
         };
         /** DebriefProblem */
         DebriefProblem: {
@@ -416,6 +446,16 @@ export interface components {
             session_seconds: number;
             /** Q Budget */
             q_budget: number | null;
+        };
+        /**
+         * FilePatch
+         * @description The user's edited copy of one served file: their attempt at fixing the bug.
+         */
+        FilePatch: {
+            /** File */
+            file: string;
+            /** Content */
+            content: string;
         };
         /** Finding */
         Finding: {
@@ -541,6 +581,8 @@ export interface components {
              * @default
              */
             design_notes: string;
+            /** Patches */
+            patches?: components["schemas"]["FilePatch"][];
         };
         /** SessionCreate */
         SessionCreate: {
@@ -658,6 +700,11 @@ export interface components {
             overtime: boolean;
             /** Findings */
             findings: number;
+            /**
+             * Patches
+             * @default 0
+             */
+            patches: number;
         };
         /** ThreadItem */
         ThreadItem: {
