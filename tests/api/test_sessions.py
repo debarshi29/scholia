@@ -8,7 +8,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 import api.sessions
-from api.db import CategoryStatRow, FindingRow, ProblemRow, SessionRow
+from api.db import FindingRow, ProblemRow, ProfileStatRow, SessionRow
 from api.sessions import (
     EXPLORATION_FLOOR,
     ProblemCard,
@@ -71,7 +71,11 @@ async def test_problems_are_ordered_unattempted_first_then_by_weak_spot(lab: Lab
     assert order == ids  # equal weights: by id
 
     async with AsyncSession(lab.engine) as db:
-        db.add(CategoryStatRow(category=BugCategory.CONCURRENCY, attempts=4, misses=3))
+        db.add(
+            ProfileStatRow(
+                profile_id="default", category=BugCategory.CONCURRENCY, attempts=4, misses=3
+            )
+        )
         await db.commit()
     order = [c["id"] for c in (await lab.client.get("/api/problems")).json()]
     assert order == [ids[1], ids[0]]  # the weak spot comes first
@@ -98,7 +102,11 @@ async def test_card_shows_best_graded_attempt(lab: Lab) -> None:
 
 async def test_stats_lists_every_category(lab: Lab) -> None:
     async with AsyncSession(lab.engine) as db:
-        db.add(CategoryStatRow(category=BugCategory.BOUNDARY, attempts=4, misses=1))
+        db.add(
+            ProfileStatRow(
+                profile_id="default", category=BugCategory.BOUNDARY, attempts=4, misses=1
+            )
+        )
         await db.commit()
     stats = {s["category"]: s for s in (await lab.client.get("/api/stats")).json()}
     assert set(stats) == {c.value for c in BugCategory}
@@ -282,9 +290,13 @@ def _p(pid: str, *cats: BugCategory) -> ProblemRow:
 def test_weight_is_floor_plus_miss_rates() -> None:
     rates = miss_rates(
         [
-            CategoryStatRow(category=BugCategory.LOGIC, attempts=4, misses=3),
-            CategoryStatRow(category=BugCategory.BOUNDARY, attempts=2, misses=0),
-            CategoryStatRow(category=BugCategory.COMPLEXITY, attempts=0, misses=0),
+            ProfileStatRow(profile_id="default", category=BugCategory.LOGIC, attempts=4, misses=3),
+            ProfileStatRow(
+                profile_id="default", category=BugCategory.BOUNDARY, attempts=2, misses=0
+            ),
+            ProfileStatRow(
+                profile_id="default", category=BugCategory.COMPLEXITY, attempts=0, misses=0
+            ),
         ]
     )
     assert rates == {BugCategory.LOGIC: 0.75, BugCategory.BOUNDARY: 0.0}

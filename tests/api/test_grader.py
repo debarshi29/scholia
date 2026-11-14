@@ -10,10 +10,10 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from api.db import (
-    CategoryStatRow,
     ClaimAuditRow,
     FindingRow,
     OutcomeRow,
+    ProfileStatRow,
     QueryRow,
     SessionRow,
 )
@@ -323,7 +323,7 @@ async def test_hand_graded_fixture(lab: Lab, path: Path) -> None:
     assert all(a.prompt_version == "audit-v1" for _, a in audits)
 
     async with AsyncSession(lab.engine) as db:
-        stats = {s.category.value: s for s in (await db.exec(select(CategoryStatRow))).all()}
+        stats = {s.category.value: s for s in (await db.exec(select(ProfileStatRow))).all()}
     assert {c: {"attempts": s.attempts, "misses": s.misses} for c, s in stats.items()} == expected[
         "stats"
     ]
@@ -387,7 +387,7 @@ async def test_regrade_replaces_results_and_counts_stats_once(lab: Lab) -> None:
     assert [a.verdict for _, a in audits] == [ClaimVerdict.CORRECT, ClaimVerdict.CORRECT]
     assert not any(a.relied_on for _, a in audits)
     async with AsyncSession(lab.engine) as db:
-        stat = await db.get(CategoryStatRow, BugCategory.NULL_EMPTY)
+        stat = await db.get(ProfileStatRow, ("default", BugCategory.NULL_EMPTY))
     assert stat is not None and (stat.attempts, stat.misses) == (1, 1)
     assert session.stats_delta == [
         {

@@ -18,11 +18,12 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from api.config import Settings, get_settings
 from api.db import (
-    CategoryStatRow,
     FindingRow,
     OutcomeRow,
     PatchRow,
     ProblemRow,
+    ProfileRow,
+    ProfileStatRow,
     QueryRow,
     SessionRow,
     as_utc,
@@ -33,6 +34,7 @@ from api.errors import ApiError
 from api.grader.fix import unified
 from api.grader.run import Grader
 from api.problems import ProblemFileError, ProblemStore
+from api.profiles import Profile
 from api.proxy import (
     AskRequest,
     AskResult,
@@ -64,7 +66,19 @@ def now() -> datetime:
 # ---------- picker ----------
 
 
-def miss_rates(stats: list[CategoryStatRow]) -> dict[BugCategory, float]:
+async def _stats(db: AsyncSession, profile_id: str) -> list[ProfileStatRow]:
+    return list(
+        (await db.exec(select(ProfileStatRow).where(ProfileStatRow.profile_id == profile_id))).all()
+    )
+
+
+def _default_mode(profile: ProfileRow, realistic_ok: bool) -> AssistantMode:
+    if profile.default_mode == AssistantMode.REALISTIC and realistic_ok:
+        return AssistantMode.REALISTIC
+    return AssistantMode.CONSTRAINED
+
+
+def miss_rates(stats: list[ProfileStatRow]) -> dict[BugCategory, float]:
     return {s.category: s.misses / s.attempts for s in stats if s.attempts > 0}
 
 
@@ -127,6 +141,7 @@ class ModeInfo(BaseModel):
 
 
 class LibrarySettings(BaseModel):
+    default_mode: AssistantMode
     default_ctx_cap: int
     default_q_budget: int
     session_minutes: int
@@ -138,7 +153,8 @@ class SessionCreate(BaseModel):
     problem_id: str | None = None
     source: Source | None = None
     """Restricts the picker; ignored when ``problem_id`` is given."""
-    mode: AssistantMode = AssistantMode.CONSTRAINED
+    mode: AssistantMode | None = None
+    """Defaults to the profile's mode, then Constrained."""
     ctx_cap: int | None = Field(default=None, gt=0, le=32768)
     q_budget: int | None = Field(default=None, ge=0, le=200)
 
@@ -280,7 +296,7 @@ def _thread_item(q: QueryRow) -> ThreadItem:
 # ---------- library ----------
 
 
-async def best_results(db: AsyncSession) -> dict[str, tuple[int, int, int]]:
+async def best_results(db: AsyncSession, profile_id: str) -> dict[str, tuple[int, int, int]]:
     """Per problem: ``(bugs matched, key bugs, seconds used)`` of the best graded attempt.
     More bugs wins; ties go to the faster attempt."""
     matched: dict[str, list[int]] = {}
@@ -292,7 +308,9 @@ async def best_results(db: AsyncSession) -> dict[str, tuple[int, int, int]]:
         counts[0] += status in (OutcomeStatus.FOUND, OutcomeStatus.PARTIAL)
         counts[1] += 1
     best: dict[str, tuple[int, int, int]] = {}
-    graded = select(SessionRow).where(col(SessionRow.graded_at).is_not(None))
+    graded = select(SessionRow).where(
+        col(SessionRow.graded_at).is_not(None), SessionRow.profile_id == profile_id
+    )
     for s in (await db.exec(graded)).all():
         if s.id not in matched or s.submitted_at is None:
             continue
@@ -323,13 +341,17 @@ def mix_projects(cards: list[ProblemCard], ranks: list[tuple[bool, float]]) -> l
 
 
 @router.get("/problems", response_model=list[ProblemCard])
-async def list_problems(db: Db, store: Store, settings: Config) -> list[ProblemCard]:
-    stmt = select(SessionRow.problem_id, func.count(), func.max(SessionRow.started_at)).group_by(
-        col(SessionRow.problem_id)
+async def list_problems(
+    db: Db, store: Store, settings: Config, profile: Profile
+) -> list[ProblemCard]:
+    stmt = (
+        select(SessionRow.problem_id, func.count(), func.max(SessionRow.started_at))
+        .where(SessionRow.profile_id == profile.id)
+        .group_by(col(SessionRow.problem_id))
     )
     attempts = {pid: (n, last) for pid, n, last in (await db.exec(stmt)).all()}
-    best = await best_results(db)
-    rates = miss_rates(list((await db.exec(select(CategoryStatRow))).all()))
+    best = await best_results(db, profile.id)
+    rates = miss_rates(await _stats(db, profile.id))
     # Not attempted first, then by picker weight: weak spots come first. The weight
     # itself and the categories behind it are never sent to the client.
     ordered = sorted(
@@ -368,8 +390,8 @@ async def list_problems(db: Db, store: Store, settings: Config) -> list[ProblemC
 
 
 @router.get("/stats", response_model=list[CategoryStat])
-async def category_stats(db: Db) -> list[CategoryStat]:
-    rows = {r.category: r for r in (await db.exec(select(CategoryStatRow))).all()}
+async def category_stats(db: Db, profile: Profile) -> list[CategoryStat]:
+    rows = {r.category: r for r in await _stats(db, profile.id)}
     out: list[CategoryStat] = []
     for category in BugCategory:
         row = rows.get(category)
@@ -387,11 +409,16 @@ async def category_stats(db: Db) -> list[CategoryStat]:
 
 
 @router.get("/settings", response_model=LibrarySettings)
-async def library_settings(settings: Config) -> LibrarySettings:
+async def library_settings(settings: Config, profile: Profile) -> LibrarySettings:
     realistic_ok = settings.gemini_api_key is not None and bool(settings.realistic_model)
     return LibrarySettings(
-        default_ctx_cap=settings.default_ctx_cap,
-        default_q_budget=settings.default_q_budget,
+        default_mode=_default_mode(profile, realistic_ok),
+        default_ctx_cap=profile.default_ctx_cap or settings.default_ctx_cap,
+        default_q_budget=(
+            settings.default_q_budget
+            if profile.default_q_budget is None
+            else profile.default_q_budget
+        ),
         session_minutes=settings.session_minutes,
         max_question_chars=settings.max_question_chars,
         modes=[
@@ -446,13 +473,21 @@ async def _view(
 
 
 @router.get("/sessions", response_model=list[SessionSummary])
-async def list_sessions(db: Db) -> list[SessionSummary]:
-    rows = (await db.exec(select(SessionRow).order_by(col(SessionRow.started_at).desc()))).all()
+async def list_sessions(db: Db, profile: Profile) -> list[SessionSummary]:
+    rows = (
+        await db.exec(
+            select(SessionRow)
+            .where(SessionRow.profile_id == profile.id)
+            .order_by(col(SessionRow.started_at).desc())
+        )
+    ).all()
     return [summary(r) for r in rows]
 
 
 @router.post("/sessions", response_model=SessionView, status_code=201)
-async def create_session(req: SessionCreate, db: Db, store: Store, settings: Config) -> SessionView:
+async def create_session(
+    req: SessionCreate, db: Db, store: Store, settings: Config, profile: Profile
+) -> SessionView:
     problems = await visible_problems(db, store, settings)
     if req.problem_id is not None:
         problem = next((p for p in problems if p.id == req.problem_id), None)
@@ -460,13 +495,22 @@ async def create_session(req: SessionCreate, db: Db, store: Store, settings: Con
             raise ApiError(404, "problem_not_found", f"No problem {req.problem_id}")
     else:
         pool = [p for p in problems if req.source is None or p.source == req.source]
-        attempted = set((await db.exec(select(SessionRow.problem_id).distinct())).all())
-        stats = list((await db.exec(select(CategoryStatRow))).all())
+        attempted = set(
+            (
+                await db.exec(
+                    select(SessionRow.problem_id)
+                    .where(SessionRow.profile_id == profile.id)
+                    .distinct()
+                )
+            ).all()
+        )
+        stats = await _stats(db, profile.id)
         picked = pick_problem(pool, attempted, miss_rates(stats), random.Random())
         if picked is None:
             raise ApiError(409, "no_problems", "No published problems; run corpus.build first")
         problem = picked
-    if req.mode == AssistantMode.REALISTIC and not (
+    mode = req.mode or profile.default_mode or AssistantMode.CONSTRAINED
+    if mode == AssistantMode.REALISTIC and not (
         settings.gemini_api_key is not None and settings.realistic_model
     ):
         raise ApiError(409, "realistic_unavailable", "Realistic mode needs a Gemini key and model")
@@ -474,9 +518,16 @@ async def create_session(req: SessionCreate, db: Db, store: Store, settings: Con
         id=uuid.uuid4().hex,
         problem_id=problem.id,
         problem_version=problem.version,
-        mode=req.mode,
-        ctx_cap=req.ctx_cap or settings.default_ctx_cap,
-        q_budget=settings.default_q_budget if req.q_budget is None else req.q_budget,
+        mode=mode,
+        profile_id=profile.id,
+        ctx_cap=req.ctx_cap or profile.default_ctx_cap or settings.default_ctx_cap,
+        q_budget=(
+            req.q_budget
+            if req.q_budget is not None
+            else settings.default_q_budget
+            if profile.default_q_budget is None
+            else profile.default_q_budget
+        ),
         started_at=now(),
     )
     db.add(session)
