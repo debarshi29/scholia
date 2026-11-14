@@ -184,7 +184,8 @@ async def delete_profile(profile_id: str, db: Db) -> None:
     if ids:
         queries = select(QueryRow.id).where(col(QueryRow.session_id).in_(ids))
         await db.exec(delete(ClaimAuditRow).where(col(ClaimAuditRow.query_id).in_(queries)))
-        for table in (QueryRow, FindingRow, OutcomeRow, PatchRow, FixResultRow):
+        # Children before parents: outcomes point at findings, which point at sessions.
+        for table in (OutcomeRow, FixResultRow, PatchRow, FindingRow, QueryRow):
             await db.exec(delete(table).where(col(table.session_id).in_(ids)))
         await db.exec(delete(SessionRow).where(col(SessionRow.id).in_(ids)))
     await db.exec(delete(ProfileStatRow).where(col(ProfileStatRow.profile_id) == profile.id))
