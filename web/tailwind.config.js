@@ -7,10 +7,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: "#0e1116",
-        panel: "#151a21",
-        raised: "#1b222b",
-        line: "#2a333f",
+        bg: "#06080b",
+        panel: "#0c1015",
+        raised: "#141a22",
+        line: "#1d2530",
         ink: "#e6eaf0",
         mute: "#9aa6b5",
         cyan: "#5cc8e8",
