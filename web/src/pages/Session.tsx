@@ -1,6 +1,7 @@
 // Session board: top bar (problem, timer, mode, submit), files and session rules on the
 // left, the code in the centre with the report draft under it, the assistant on the right.
 // The timer is display only: the server owns the clock and decides overtime at submit.
+import ThemeToggle from "../components/ThemeToggle";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type SessionView } from "../api/client";
@@ -156,7 +157,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
         <div className="flex min-w-0 items-center gap-4">
           <Link
             to="/"
-            className="flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-mute transition hover:bg-white/5 hover:text-ink"
+            className="flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-mute transition hover:bg-ink/5 hover:text-ink"
           >
             <ArrowLeft className="size-4" />
             Library
@@ -201,6 +202,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
               { value: "realistic", label: "Realistic · Gemini" },
             ]}
           />
+          <ThemeToggle />
           <SubmitControl
             count={draft.findings.length}
             blocker={blocker}
@@ -214,7 +216,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
           </p>
         )}
         {/* Elapsed time as a line along the bottom edge of the bar. */}
-        <span className="absolute inset-x-0 -bottom-px h-0.5 bg-white/[0.04]" aria-hidden="true">
+        <span className="absolute inset-x-0 -bottom-px h-0.5 bg-ink/[0.04]" aria-hidden="true">
           <span
             className={`block h-full transition-[width] duration-1000 ease-linear ${
               over || low
@@ -246,8 +248,8 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
                       title={f.path}
                       className={`relative flex min-h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left font-mono text-[12.5px] transition ${
                         current
-                          ? "bg-white/[0.07] text-ink"
-                          : "text-mute hover:bg-white/[0.04] hover:text-ink"
+                          ? "bg-ink/[0.07] text-ink"
+                          : "text-mute hover:bg-ink/[0.04] hover:text-ink"
                       }`}
                     >
                       {current && (

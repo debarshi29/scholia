@@ -1,5 +1,6 @@
 // Manage local profiles: switch, create, rename, set session defaults, reset the weak-spot
 // stats, delete. Profiles keep progress apart on this machine; there is no login.
+import ThemeToggle from "../components/ThemeToggle";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { api, type AssistantMode, type Profile } from "../api/client";
@@ -259,12 +260,15 @@ export default function Profiles() {
       <header className="topbar sticky top-0 z-20 flex min-h-12 items-center gap-3 px-5">
         <Link
           to="/"
-          className="flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-mute transition hover:bg-white/5 hover:text-ink"
+          className="flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-mute transition hover:bg-ink/5 hover:text-ink"
         >
           <ArrowLeft className="size-4" />
           Library
         </Link>
         <h1 className="text-[15px] font-semibold">Profiles</h1>
+        <span className="ml-auto">
+          <ThemeToggle />
+        </span>
       </header>
       <div className="mx-auto flex max-w-3xl flex-col gap-4 px-5 py-6">
         <p className="text-[13px] text-mute">

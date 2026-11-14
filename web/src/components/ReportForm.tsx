@@ -103,13 +103,13 @@ export default function ReportForm(props: Props) {
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex min-h-9 w-full items-center justify-between gap-3 px-5 text-left transition hover:bg-white/[0.03]"
+        className="flex min-h-9 w-full items-center justify-between gap-3 px-5 text-left transition hover:bg-ink/[0.03]"
       >
         <span className="flex items-center gap-3">
           <span className="font-semibold">Report draft</span>
           <span
             className={`rounded-full px-2 py-0.5 font-mono text-[12px] leading-none ${
-              count > 0 ? "bg-coral/15 text-coral" : "bg-white/[0.07] text-mute"
+              count > 0 ? "bg-coral/15 text-coral" : "bg-ink/[0.07] text-mute"
             }`}
           >
             {plural(count, "finding")}

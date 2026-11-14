@@ -116,20 +116,20 @@ export function Mark(props: Props) {
     <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" className={props.className ?? "size-7"}>
       <defs>
         <linearGradient id="mark-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#7fdcf5" />
-          <stop offset="1" stopColor="#3aa9cf" />
+          <stop offset="0" stopColor="#2f8c98" />
+          <stop offset="1" stopColor="#1e6e78" />
         </linearGradient>
       </defs>
       <rect width="32" height="32" rx="9" fill="url(#mark-g)" />
       <path
         d="M9 11h8M9 16h5M9 21h7"
-        stroke="#0e1116"
+        stroke="#fffdf9"
         strokeWidth="2.4"
         strokeLinecap="round"
         fill="none"
       />
-      <circle cx="21" cy="18" r="4.2" stroke="#0e1116" strokeWidth="2.4" fill="none" />
-      <path d="M24.2 21.2l2.6 2.6" stroke="#0e1116" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="21" cy="18" r="4.2" stroke="#fffdf9" strokeWidth="2.4" fill="none" />
+      <path d="M24.2 21.2l2.6 2.6" stroke="#fffdf9" strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   );
 }
@@ -142,5 +142,17 @@ export const User = (p: Props) => (
 export const Plus = (p: Props) => (
   <Svg {...p}>
     <path d="M12 5v14M5 12h14" />
+  </Svg>
+);
+
+export const Sun = (p: Props) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" />
+  </Svg>
+);
+export const Moon = (p: Props) => (
+  <Svg {...p}>
+    <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
   </Svg>
 );

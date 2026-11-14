@@ -3,7 +3,8 @@
 // Flagged lines get a coral tint and a dot in the margin.
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { useEffect, useRef } from "react";
-import { monaco, THEME } from "../lib/monaco";
+import { monaco, THEMES } from "../lib/monaco";
+import { useTheme } from "../store/theme";
 
 export interface LineRange {
   from: number;
@@ -27,6 +28,7 @@ type Collection = monaco.editor.IEditorDecorationsCollection;
 export default function CodeViewer(props: Props) {
   const { modelPath, content, flagged, onSelect, onEdit, reveal } = props;
   const editable = onEdit !== undefined;
+  const { theme } = useTheme();
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const decorations = useRef<Collection | null>(null);
   const anchor = useRef<number | null>(null);
@@ -120,7 +122,7 @@ export default function CodeViewer(props: Props) {
       path={modelPath}
       value={content}
       language="python"
-      theme={THEME}
+      theme={THEMES[theme]}
       onMount={onMount}
       loading={<p className="p-4 text-mute">Loading the editor…</p>}
       options={{
