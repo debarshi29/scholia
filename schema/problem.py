@@ -10,6 +10,8 @@ from schema._base import NonEmptyStr, ProblemId, StrictModel
 class Source(StrEnum):
     SWEBENCH = "swebench"
     BUGSINPY = "bugsinpy"
+    PLANTED = "planted"
+    """A bug planted in a tested algorithm repo by a deterministic mutation (Tier 2)."""
 
 
 class ProblemMeta(StrictModel):

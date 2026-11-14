@@ -59,12 +59,12 @@ def check_file_set(paths: list[str]) -> DropReason | None:
     return None
 
 
-def check_line_counts(texts: list[str]) -> DropReason | None:
-    """Every file must be within [MIN_LINES, MAX_LINES]. v1 does no cropping."""
+def check_line_counts(texts: list[str], min_lines: int = MIN_LINES) -> DropReason | None:
+    """Every file must be within [min_lines, MAX_LINES]. v1 does no cropping."""
     counts = [line_count(t) for t in texts]
     if any(c > MAX_LINES for c in counts):
         return DropReason.TOO_LONG
-    if any(c < MIN_LINES for c in counts):
+    if any(c < min_lines for c in counts):
         return DropReason.TOO_SHORT
     return None
 
