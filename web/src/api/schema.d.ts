@@ -669,7 +669,7 @@ export interface components {
          * Source
          * @enum {string}
          */
-        Source: "swebench" | "bugsinpy";
+        Source: "swebench" | "bugsinpy" | "planted";
         /** SourceFile */
         SourceFile: {
             /** Path */
