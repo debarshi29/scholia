@@ -65,9 +65,12 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
   const draft = useDraft(id);
   const addFinding = useDraftStore((s) => s.addFinding);
   const clearDraft = useDraftStore((s) => s.clear);
+  const setEdit = useDraftStore((s) => s.setEdit);
+  const edits = draft.edits ?? {};
 
   const [activePath, setActivePath] = useState(session.files[0]?.path ?? "");
   const [range, setRange] = useState<LineRange | null>(null);
+  const [fixMode, setFixMode] = useState(Object.keys(draft.edits ?? {}).length > 0);
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const [reveal, setReveal] = useState<{ line: number; nonce: number } | null>(null);
   const [reportOpen, setReportOpen] = useState(draft.findings.length > 0);
@@ -116,6 +119,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
           fix: f.fix.trim(),
         })),
         design_notes: draft.designNotes,
+        patches: Object.entries(edits).map(([file, content]) => ({ file, content })),
       }),
     onSuccess: async () => {
       clearDraft(id);
@@ -124,6 +128,11 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
     },
   });
 
+  const onEdit = (content: string) => {
+    if (!active) return;
+    // Back to the original text is no edit at all.
+    setEdit(id, active.path, content === active.content ? null : content);
+  };
   const open = (path: string) => {
     setActivePath(path);
     setRange(null);
@@ -251,6 +260,12 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
                           {flags}
                         </span>
                       )}
+                      {edits[f.path] !== undefined && (
+                        <span
+                          title="Edited: part of your fix"
+                          className="size-2 rounded-full bg-green shadow-[0_0_8px_rgb(111_208_140/0.7)]"
+                        />
+                      )}
                       <span className="text-[11.5px] text-mute/80">{lineCounts[f.path]}</span>
                     </button>
                   </li>
@@ -273,7 +288,7 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
               </li>
               <li className={rule}>
                 <Flag className="mt-0.5 size-4 shrink-0 text-coral" />
-                No test runner. Read, reason, report.
+                No test runner. Read, reason, report, and optionally fix.
               </li>
             </ul>
           </section>
@@ -287,6 +302,24 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
                 {lineCounts[active.path]} lines
               </span>
             </p>
+            <div className="flex items-center gap-3">
+              <Segmented
+                label="Editor mode"
+                value={fixMode ? "fix" : "read"}
+                tone="green"
+                compact
+                onChange={(v) => setFixMode(v === "fix")}
+                options={[
+                  { value: "read", label: "Read" },
+                  { value: "fix", label: "Fix" },
+                ]}
+              />
+              {fixMode && edits[active.path] !== undefined && (
+                <Button compact variant="outline" tone="mute" onClick={() => setEdit(id, active.path, null)}>
+                  Reset file
+                </Button>
+              )}
+            </div>
             {selection ? (
               <p key="actions" className="fade flex items-center gap-2">
                 <span className="mr-1 rounded-full bg-cyan/10 px-2.5 py-1 font-mono text-[12.5px] text-cyan">
@@ -315,8 +348,10 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
           </div>
           <div className="min-h-0">
             <CodeViewer
+              key={`${active.path}:${fixMode}`}
               modelPath={`${id}/${active.path}`}
-              content={active.content}
+              content={edits[active.path] ?? active.content}
+              onEdit={fixMode ? onEdit : undefined}
               flagged={flagged}
               onSelect={setRange}
               reveal={reveal}
