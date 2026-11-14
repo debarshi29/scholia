@@ -53,10 +53,10 @@ function Header({ sessions }: { sessions: SessionSummary[] }) {
   const lastDebrief = sessions.find((s) => s.graded);
   const resume = sessions.find((s) => !s.submitted_at);
   return (
-    <header className="topbar sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 px-6">
+    <header className="topbar sticky top-0 z-20 flex min-h-12 items-center justify-between gap-4 px-5">
       <div className="flex items-center gap-3">
-        <Mark className="size-8 drop-shadow-[0_6px_14px_rgb(92_200_232/0.45)]" />
-        <span className="text-lg font-semibold tracking-tight">scholia</span>
+        <Mark className="size-6" />
+        <span className="text-[15px] font-semibold tracking-tight">scholia</span>
         <span className="ml-2 hidden text-[13px] text-mute sm:inline">
           code comprehension practice
         </span>
@@ -65,7 +65,7 @@ function Header({ sessions }: { sessions: SessionSummary[] }) {
         {resume && (
           <Link
             to={`/session/${resume.id}`}
-            className="flex min-h-11 items-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-3.5 font-medium text-amber transition hover:bg-amber/20"
+            className="flex min-h-9 items-center gap-2 rounded-md border border-amber/40 bg-amber/10 px-3.5 font-medium text-amber transition hover:bg-amber/20"
           >
             <span className="size-2 animate-pulse rounded-full bg-amber" />
             Resume {resume.problem_id}
@@ -74,7 +74,7 @@ function Header({ sessions }: { sessions: SessionSummary[] }) {
         {lastDebrief && (
           <Link
             to={`/debrief/${lastDebrief.id}`}
-            className="flex min-h-11 items-center rounded-xl px-3.5 text-mute transition hover:bg-white/5 hover:text-ink"
+            className="flex min-h-9 items-center rounded-md px-3.5 text-mute transition hover:bg-white/5 hover:text-ink"
           >
             Last debrief
           </Link>
@@ -114,8 +114,8 @@ function Avatar({ p, large }: { p: ProblemCard; large?: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center rounded-xl font-mono font-semibold uppercase ${
-        large ? "size-12 text-base" : "size-10 text-[13px]"
+      className={`flex shrink-0 items-center justify-center rounded-md font-mono font-semibold uppercase ${
+        large ? "size-8 text-sm" : "size-8 text-[12px]"
       } ${avatarTone(p.origin_repo)}`}
     >
       {name.slice(0, 2) || "py"}
@@ -207,7 +207,7 @@ function Spotlight(props: {
           <button
             type="button"
             onClick={() => setTick((n) => n + 1)}
-            className="flex min-h-11 items-center gap-2 rounded-xl border border-line px-3.5 text-[13px] font-medium text-mute transition hover:border-cyan/50 hover:text-cyan"
+            className="flex min-h-9 items-center gap-2 rounded-md border border-line px-3.5 text-[13px] font-medium text-mute transition hover:border-cyan/50 hover:text-cyan"
           >
             <Refresh className="size-4" />
             Shuffle
@@ -224,19 +224,15 @@ function Spotlight(props: {
               aria-pressed={on}
               onClick={() => props.onSelect(p.id)}
               style={stagger(i)}
-              className={`surface surface-hover rise group relative flex flex-col gap-4 overflow-hidden px-5 py-5 text-left ${
+              className={`surface surface-hover rise group relative flex flex-col gap-2.5 overflow-hidden px-3.5 py-3 text-left ${
                 on ? "surface-selected" : ""
               }`}
             >
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full bg-cyan/10 blur-3xl transition-opacity duration-300 group-hover:opacity-100 md:opacity-60"
-              />
               <span className="flex items-center gap-3.5">
                 <Avatar p={p} large />
                 <span className="min-w-0">
                   <span className="block truncate text-[12.5px] text-mute">{repoName(p)}</span>
-                  <span className="block truncate text-xl leading-tight font-semibold tracking-tight">
+                  <span className="block truncate text-[15px] leading-tight font-semibold">
                     {fileName(p)}
                   </span>
                 </span>
@@ -267,7 +263,7 @@ function WeakSpots({ stats }: { stats: CategoryStat[] }) {
   if (seen.length === 0) return null;
   const graded = seen.reduce((n, s) => n + s.attempts, 0);
   return (
-    <section className="surface rise px-6 py-5" style={stagger(2)}>
+    <section className="surface rise px-4 py-4" style={stagger(2)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2.5 text-base font-semibold">
           <Target className="size-[18px] text-coral" />
@@ -308,7 +304,7 @@ function Tile(props: { problem: ProblemCard; selected: boolean; onSelect: () => 
       aria-pressed={props.selected}
       onClick={props.onSelect}
       title={`${p.id} · ${p.files.join(", ")}`}
-      className={`tile flex min-h-[4.25rem] items-center gap-3 px-3 py-2.5 text-left ${
+      className={`tile flex min-h-[3.25rem] items-center gap-2.5 px-2.5 py-2 text-left ${
         props.selected ? "tile-selected" : ""
       }`}
     >
@@ -383,12 +379,12 @@ function Stepper(props: {
 }) {
   const { label, value, step, min, max, disabled, onChange } = props;
   const button =
-    "flex size-11 items-center justify-center rounded-xl border border-line bg-bg/70 text-lg transition enabled:hover:border-cyan/60 enabled:hover:text-cyan enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-35";
+    "flex size-8 items-center justify-center rounded-md border border-line bg-bg/70 text-base transition enabled:hover:border-cyan/60 enabled:hover:text-cyan enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-35";
   return (
     <div className="grid grid-cols-[1fr_auto] items-center gap-3">
       <span className="flex items-center gap-2.5">
         <span className="text-mute">{props.icon}</span>
-        {label}
+        <span className="whitespace-nowrap">{label}</span>
       </span>
       <span className="flex items-center gap-1.5">
         <button
@@ -400,7 +396,7 @@ function Stepper(props: {
         >
           −
         </button>
-        <output className="w-[5.5rem] text-center font-mono text-[13.5px]" aria-live="polite">
+        <output className="w-[5.5rem] text-center font-mono text-[13px] whitespace-nowrap" aria-live="polite">
           {props.display}
         </output>
         <button
@@ -442,9 +438,9 @@ function Setup(props: {
   });
 
   return (
-    <aside className="surface rise sticky top-[5.5rem] h-fit px-6 py-6" style={stagger(2)}>
+    <aside className="surface rise sticky top-[4.5rem] h-fit px-4 py-4" style={stagger(2)}>
       <form
-        className="flex flex-col gap-5"
+        className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           start.mutate();
@@ -486,7 +482,7 @@ function Setup(props: {
           </p>
         </div>
 
-        <div className="flex flex-col gap-3.5 rounded-2xl border border-white/[0.05] bg-white/[0.03] px-4 py-4">
+        <div className="flex flex-col gap-3 rounded-lg border border-line px-3 py-3">
           <Stepper
             label="Context window"
             icon={<Layers />}
@@ -535,7 +531,7 @@ function Setup(props: {
         <Button
           type="submit"
           tone={constrained ? "cyan" : "amber"}
-          className="group min-h-14 text-base"
+          className="group min-h-10 text-sm"
           disabled={start.isPending}
         >
           {start.isPending ? "Starting…" : `Start ${settings.session_minutes}-minute session`}
@@ -551,7 +547,7 @@ function Setup(props: {
 
 function LoadingBoard() {
   return (
-    <div className="mx-auto grid max-w-[1500px] gap-6 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
+    <div className="mx-auto grid max-w-[1500px] gap-5 px-5 py-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
       <div className="flex flex-col gap-6">
         <Skeleton className="h-10 w-72" />
         <div className="grid gap-4 md:grid-cols-3">
@@ -618,17 +614,17 @@ export default function Library() {
   return (
     <>
       {header}
-      <div className="mx-auto grid max-w-[1500px] gap-6 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="flex min-w-0 flex-col gap-7">
+      <div className="mx-auto grid max-w-[1500px] gap-5 px-5 py-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="flex min-w-0 flex-col gap-5">
           <div className="rise flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-[2.25rem] leading-tight font-semibold tracking-tight">
+              <h1 className="text-2xl leading-tight font-semibold tracking-tight">
                 Pick a{" "}
-                <span className="bg-gradient-to-r from-[#8fe3f8] to-cyan bg-clip-text text-transparent">
+                <span className="text-cyan">
                   problem
                 </span>
               </h1>
-              <p className="mt-1.5 max-w-2xl text-[15px] text-mute">
+              <p className="mt-1 max-w-2xl text-[13px] text-mute">
                 Each one is a real file you have not seen, with a bug you have to find.
               </p>
             </div>
@@ -651,7 +647,7 @@ export default function Library() {
               <Spotlight problems={all} selectedId={selectedId} onSelect={toggle} />
               <WeakSpots stats={stats.data} />
 
-              <section className="rise flex flex-col gap-5" style={stagger(3)}>
+              <section className="rise flex flex-col gap-4" style={stagger(3)}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div role="group" aria-label="Source" className="flex flex-wrap items-center gap-2">
                     {filters.map((f) => {
@@ -662,9 +658,9 @@ export default function Library() {
                           type="button"
                           aria-pressed={on}
                           onClick={() => setSource(f.value)}
-                          className={`flex min-h-11 items-center gap-2 rounded-full px-4 font-semibold transition duration-200 ${
+                          className={`flex min-h-9 items-center gap-2 rounded-md px-3 text-[13px] font-medium transition duration-150 ${
                             on
-                              ? "bg-gradient-to-b from-[#74d6f2] to-[#49b9dc] text-bg shadow-[0_8px_22px_-10px_rgb(92_200_232/0.8)]"
+                              ? "bg-gradient-to-b from-[#74d6f2] to-[#49b9dc] text-bg "
                               : "border border-line text-ink hover:border-mute/60 hover:bg-white/[0.04]"
                           }`}
                         >

@@ -6,14 +6,11 @@ import { ApiError } from "../api/client";
 export type Tone = "cyan" | "amber" | "coral" | "green" | "mute";
 
 const SOLID: Record<Tone, string> = {
-  cyan: "bg-gradient-to-b from-[#74d6f2] to-[#49b9dc] text-bg shadow-[0_10px_26px_-10px_rgb(92_200_232/0.75),inset_0_1px_0_rgb(255_255_255/0.35)]",
-  amber:
-    "bg-gradient-to-b from-[#f7c56d] to-[#eda636] text-bg shadow-[0_10px_26px_-10px_rgb(242_178_74/0.7),inset_0_1px_0_rgb(255_255_255/0.35)]",
-  coral:
-    "bg-gradient-to-b from-[#ff9285] to-[#f96a5a] text-bg shadow-[0_10px_26px_-10px_rgb(255_122_107/0.7),inset_0_1px_0_rgb(255_255_255/0.3)]",
-  green:
-    "bg-gradient-to-b from-[#86dca0] to-[#5cc47c] text-bg shadow-[0_10px_26px_-10px_rgb(111_208_140/0.7),inset_0_1px_0_rgb(255_255_255/0.3)]",
-  mute: "bg-raised text-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.06)] hover:bg-line",
+  cyan: "bg-cyan text-bg hover:bg-[#7fd6ef]",
+  amber: "bg-amber text-bg hover:bg-[#f5c36a]",
+  coral: "bg-coral text-bg hover:bg-[#ff9285]",
+  green: "bg-green text-bg hover:bg-[#8adca2]",
+  mute: "bg-raised text-ink hover:bg-line",
 };
 
 const OUTLINE: Record<Tone, string> = {
@@ -42,7 +39,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl font-semibold transition duration-200 ease-out enabled:hover:-translate-y-px enabled:hover:brightness-110 enabled:active:translate-y-0 enabled:active:brightness-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none ${compact ? "px-3.5 text-[13px]" : "px-5"} ${look} ${className}`}
+      className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-md font-medium transition duration-150 ease-out enabled:active:brightness-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none ${compact ? "min-h-8 px-3 text-[12.5px]" : "px-4 text-[13.5px]"} ${look} ${className}`}
       {...rest}
     />
   );
@@ -79,14 +76,14 @@ export function Chip(props: { tone?: Tone; dot?: boolean; mono?: boolean; childr
 }
 
 export const INPUT =
-  "min-h-11 w-full rounded-xl border border-line bg-bg/70 px-3.5 text-ink shadow-[inset_0_1px_2px_rgb(0_0_0/0.35)] transition duration-200 placeholder:text-mute/55 hover:border-mute/50 focus:border-cyan focus:bg-bg focus:outline-none focus:ring-2 focus:ring-cyan/25";
+  "min-h-9 w-full rounded-md border border-line bg-bg/70 px-3.5 text-ink transition duration-200 placeholder:text-mute/55 hover:border-mute/50 focus:border-cyan focus:bg-bg focus:outline-none focus:ring-2 focus:ring-cyan/25";
 
 export function Notice(props: { tone?: Tone; children: ReactNode; role?: "alert" | "status" }) {
   const tone = props.tone ?? "mute";
   return (
     <div
       role={props.role ?? (tone === "coral" ? "alert" : "status")}
-      className={`fade rounded-xl border px-3.5 py-2.5 text-[13px] ${CHIP[tone]}`}
+      className={`fade rounded-md border px-3.5 py-2.5 text-[13px] ${CHIP[tone]}`}
     >
       {props.children}
     </div>
@@ -159,19 +156,19 @@ export function Segmented<T extends string>(props: {
   const index = props.options.findIndex((o) => o.value === props.value);
   const thumb =
     props.tone === "amber"
-      ? "from-[#f7c56d] to-[#eda636] shadow-[0_8px_20px_-8px_rgb(242_178_74/0.8)]"
+      ? "bg-amber"
       : props.tone === "green"
-        ? "from-[#8fe0a6] to-[#52bd75] shadow-[0_8px_20px_-8px_rgb(111_208_140/0.8)]"
-        : "from-[#74d6f2] to-[#49b9dc] shadow-[0_8px_20px_-8px_rgb(92_200_232/0.8)]";
+        ? "bg-green"
+        : "bg-cyan";
   return (
     <div
       role="radiogroup"
       aria-label={props.label}
-      className="relative grid grid-cols-2 rounded-2xl border border-line bg-bg/80 p-1.5 shadow-[inset_0_1px_3px_rgb(0_0_0/0.5)]"
+      className="relative grid grid-cols-2 rounded-lg border border-line bg-bg/80 p-0.5"
     >
       <span
         aria-hidden="true"
-        className={`pointer-events-none absolute inset-y-1.5 left-1.5 w-[calc(50%-0.375rem)] rounded-xl bg-gradient-to-b transition-transform duration-300 ease-[cubic-bezier(0.2,0.7,0.2,1)] ${thumb}`}
+        className={`pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc(50%-0.25rem)] rounded-md transition-transform duration-300 ease-[cubic-bezier(0.2,0.7,0.2,1)] ${thumb}`}
         style={{ transform: `translateX(${index === 1 ? "100%" : "0"})` }}
       />
       {props.options.map((o) => {
@@ -185,8 +182,8 @@ export function Segmented<T extends string>(props: {
             title={o.title}
             disabled={o.disabled || (!props.onChange && !checked)}
             onClick={() => props.onChange?.(o.value)}
-            className={`relative z-10 rounded-xl font-semibold whitespace-nowrap transition-colors duration-200 disabled:cursor-not-allowed ${
-              props.compact ? "min-h-11 px-3.5 text-[13px]" : "min-h-11 px-4"
+            className={`relative z-10 rounded-md font-medium whitespace-nowrap transition-colors duration-200 disabled:cursor-not-allowed ${
+              props.compact ? "min-h-8 px-3 text-[12.5px]" : "min-h-9 px-4 text-[13px]"
             } ${checked ? "text-bg" : "text-mute enabled:hover:text-ink disabled:opacity-55"}`}
           >
             {o.label}

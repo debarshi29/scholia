@@ -42,7 +42,7 @@ function Row(props: { sessionId: string; finding: DraftFinding; focus: boolean; 
         type="button"
         onClick={props.onJump}
         title={`Show ${f.file} in the editor`}
-        className="flex min-h-12 max-w-56 items-center gap-2 rounded-xl border border-coral/25 bg-coral/10 px-3 text-left font-mono text-[12.5px] text-coral transition hover:border-coral/60 hover:bg-coral/15"
+        className="flex min-h-9 max-w-56 items-center gap-2 rounded-md border border-coral/25 bg-coral/10 px-3 text-left font-mono text-[12.5px] text-coral transition hover:border-coral/60 hover:bg-coral/15"
       >
         <Flag className="size-3.5 shrink-0" />
         <span className="truncate">{location}</span>
@@ -50,7 +50,7 @@ function Row(props: { sessionId: string; finding: DraftFinding; focus: boolean; 
       <label>
         <span className="sr-only">Category for {location}</span>
         <select
-          className={`${INPUT} min-h-12 cursor-pointer`}
+          className={`${INPUT} min-h-9 cursor-pointer`}
           value={f.category}
           onChange={(e) => update(sessionId, f.key, { category: e.target.value as BugCategory })}
         >
@@ -66,7 +66,7 @@ function Row(props: { sessionId: string; finding: DraftFinding; focus: boolean; 
         <textarea
           ref={text}
           rows={1}
-          className={`${INPUT} block max-h-40 min-h-12 resize-none py-3 [field-sizing:content] ${
+          className={`${INPUT} block max-h-40 min-h-9 resize-none py-3 [field-sizing:content] ${
             empty ? "border-amber/40" : ""
           }`}
           value={f.explanation}
@@ -79,7 +79,7 @@ function Row(props: { sessionId: string; finding: DraftFinding; focus: boolean; 
         onClick={() => remove(sessionId, f.key)}
         aria-label={`Remove ${location}`}
         title="Remove"
-        className="flex size-12 items-center justify-center rounded-xl text-mute transition hover:bg-coral/10 hover:text-coral"
+        className="flex size-9 items-center justify-center rounded-md text-mute transition hover:bg-coral/10 hover:text-coral"
       >
         <Trash className="size-[18px]" />
       </button>
@@ -97,13 +97,13 @@ export default function ReportForm(props: Props) {
   return (
     <section
       aria-label="Report draft"
-      className="flex min-h-0 flex-col border-t border-line bg-panel/80 shadow-[0_-16px_32px_-20px_rgb(0_0_0/0.7)]"
+      className="flex min-h-0 flex-col border-t border-line bg-panel/80"
     >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex min-h-12 w-full items-center justify-between gap-3 px-5 text-left transition hover:bg-white/[0.03]"
+        className="flex min-h-9 w-full items-center justify-between gap-3 px-5 text-left transition hover:bg-white/[0.03]"
       >
         <span className="flex items-center gap-3">
           <span className="font-semibold">Report draft</span>
@@ -124,7 +124,7 @@ export default function ReportForm(props: Props) {
       {open && (
         <div className="fade flex max-h-[38vh] min-h-0 flex-col gap-3 overflow-y-auto px-5 pt-1 pb-4">
           {count === 0 ? (
-            <p className="rounded-xl border border-dashed border-line px-4 py-3 text-[13px] text-mute">
+            <p className="rounded-md border border-dashed border-line px-4 py-3 text-[13px] text-mute">
               No findings yet. Select the lines of a bug in the code, then choose “Flag as bug”.
             </p>
           ) : (
