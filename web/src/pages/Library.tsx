@@ -1,16 +1,27 @@
-// Library board: weak spots, source filter, problem cards and the session setup panel.
+// Library (home): a spotlight row that reshuffles, weak spots, and every problem as a
+// compact tile, grouped by bug category or by project, with the session setup panel.
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   api,
   type AssistantMode,
+  type BugCategory,
   type CategoryStat,
   type LibrarySettings,
   type ProblemCard,
   type SessionSummary,
   type Source,
 } from "../api/client";
-import { ArrowRight, Check, Clock, Cloud, Cpu, FileCode, Layers, Mark, Target } from "../components/icons";
+import {
+  ArrowRight,
+  Clock,
+  Cloud,
+  Cpu,
+  Layers,
+  Mark,
+  Refresh,
+  Target,
+} from "../components/icons";
 import {
   Bar,
   Button,
@@ -22,6 +33,7 @@ import {
   stagger,
 } from "../components/ui";
 import {
+  CATEGORIES,
   CATEGORY_LABEL,
   percent,
   plural,
@@ -32,6 +44,10 @@ import {
 import { Link, navigate } from "../router";
 
 type SourceFilter = Source | "all";
+type Grouping = "category" | "project";
+
+const SHUFFLE_SECONDS = 12;
+const SPOTLIGHT = 3;
 
 function Header({ sessions }: { sessions: SessionSummary[] }) {
   const lastDebrief = sessions.find((s) => s.graded);
@@ -68,124 +84,291 @@ function Header({ sessions }: { sessions: SessionSummary[] }) {
   );
 }
 
+// ---- small helpers ----
+
+const AVATAR = [
+  "bg-cyan/15 text-cyan",
+  "bg-amber/15 text-amber",
+  "bg-green/15 text-green",
+  "bg-coral/15 text-coral",
+  "bg-[#b79cf2]/15 text-[#b79cf2]",
+];
+
+function repoName(p: ProblemCard): string {
+  return p.origin_repo.split("/").pop() ?? p.origin_repo;
+}
+
+function fileName(p: ProblemCard): string {
+  return problemTitle(p.origin_repo, p.files).split(": ")[1] ?? repoName(p);
+}
+
+/** A stable colour per project, so the same repo looks the same everywhere. */
+function avatarTone(repo: string): string {
+  let h = 0;
+  for (const ch of repo) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return AVATAR[h % AVATAR.length] ?? AVATAR[0]!;
+}
+
+function Avatar({ p, large }: { p: ProblemCard; large?: boolean }) {
+  const name = repoName(p).replace(/[^a-zA-Z]/g, "");
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex shrink-0 items-center justify-center rounded-xl font-mono font-semibold uppercase ${
+        large ? "size-12 text-base" : "size-10 text-[13px]"
+      } ${avatarTone(p.origin_repo)}`}
+    >
+      {name.slice(0, 2) || "py"}
+    </span>
+  );
+}
+
+function status(p: ProblemCard): { text: string; dot: string; tone: string } {
+  if (p.best_found != null && p.best_bugs != null) {
+    const minutes = Math.max(1, Math.round((p.best_seconds ?? 0) / 60));
+    const all = p.best_found === p.best_bugs;
+    return {
+      text: `${p.best_found}/${p.best_bugs} · ${minutes} min`,
+      dot: all ? "bg-green" : "bg-amber",
+      tone: all ? "text-green" : "text-amber",
+    };
+  }
+  return p.attempts > 0
+    ? { text: "in progress", dot: "bg-amber", tone: "text-amber" }
+    : { text: "new", dot: "bg-mute/50", tone: "text-mute" };
+}
+
+/** Deterministic pseudo-random order for a given tick (pure, so safe during render). */
+function shuffled<T>(items: T[], seed: number): T[] {
+  let a = (seed * 2654435761 + 0x9e3779b9) >>> 0;
+  const next = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(next() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
+
+// ---- spotlight ----
+
+function Spotlight(props: {
+  problems: ProblemCard[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const [tick, setTick] = useState(1);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => setTick((n) => n + 1), SHUFFLE_SECONDS * 1000);
+    return () => clearInterval(t);
+  }, [paused, tick]);
+
+  // Prefer problems not tried yet; fall back to everything.
+  const fresh = props.problems.filter((p) => p.attempts === 0);
+  const pool = fresh.length >= SPOTLIGHT ? fresh : props.problems;
+  const picks = shuffled(pool, tick).slice(0, SPOTLIGHT);
+  if (picks.length === 0) return null;
+
+  return (
+    <section
+      aria-label="Spotlight"
+      className="rise"
+      style={stagger(1)}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-3 text-base font-semibold">
+          Spotlight
+          <span className="text-[12.5px] font-normal text-mute">
+            {paused ? "paused while you look" : `random picks, reshuffled every ${SHUFFLE_SECONDS} s`}
+          </span>
+        </h2>
+        <div className="flex items-center gap-3">
+          <span className="bar-track hidden h-1 w-28 sm:block" aria-hidden="true">
+            <span
+              key={tick}
+              className="countdown"
+              style={{
+                animationDuration: `${SHUFFLE_SECONDS}s`,
+                animationPlayState: paused ? "paused" : "running",
+              }}
+            />
+          </span>
+          <button
+            type="button"
+            onClick={() => setTick((n) => n + 1)}
+            className="flex min-h-11 items-center gap-2 rounded-xl border border-line px-3.5 text-[13px] font-medium text-mute transition hover:border-cyan/50 hover:text-cyan"
+          >
+            <Refresh className="size-4" />
+            Shuffle
+          </button>
+        </div>
+      </div>
+      <div key={tick} className="grid gap-4 md:grid-cols-3">
+        {picks.map((p, i) => {
+          const on = p.id === props.selectedId;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => props.onSelect(p.id)}
+              style={stagger(i)}
+              className={`surface surface-hover rise group relative flex flex-col gap-4 overflow-hidden px-5 py-5 text-left ${
+                on ? "surface-selected" : ""
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full bg-cyan/10 blur-3xl transition-opacity duration-300 group-hover:opacity-100 md:opacity-60"
+              />
+              <span className="flex items-center gap-3.5">
+                <Avatar p={p} large />
+                <span className="min-w-0">
+                  <span className="block truncate text-[12.5px] text-mute">{repoName(p)}</span>
+                  <span className="block truncate text-xl leading-tight font-semibold tracking-tight">
+                    {fileName(p)}
+                  </span>
+                </span>
+              </span>
+              <span className="flex items-center justify-between gap-2 text-[12.5px] text-mute">
+                <span className="font-mono">
+                  {p.id} · {p.lines} lines
+                </span>
+                <span className="flex items-center gap-1.5 font-medium text-cyan opacity-0 transition duration-200 group-hover:opacity-100">
+                  {on ? "Selected" : "Select"}
+                  <ArrowRight className="size-4" />
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ---- weak spots ----
+
 function WeakSpots({ stats }: { stats: CategoryStat[] }) {
   const seen = stats
     .filter((s) => s.attempts > 0)
     .sort((a, b) => (b.miss_rate ?? 0) - (a.miss_rate ?? 0));
+  if (seen.length === 0) return null;
   const graded = seen.reduce((n, s) => n + s.attempts, 0);
   return (
-    <section className="surface rise px-6 py-5" style={stagger(1)}>
+    <section className="surface rise px-6 py-5" style={stagger(2)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2.5 text-base font-semibold">
           <Target className="size-[18px] text-coral" />
           Your weak spots
         </h2>
         <p className="text-[13px] text-mute">
-          {seen.length > 0
-            ? `Share of key bugs you missed · ${plural(graded, "graded bug")}`
-            : "Share of key bugs you missed"}
+          Share of key bugs you missed · {plural(graded, "graded bug")}
         </p>
       </div>
-      {seen.length === 0 ? (
-        <div className="mt-4 flex items-center gap-4 rounded-xl border border-dashed border-line px-4 py-3.5">
-          <div className="flex shrink-0 flex-col gap-1.5" aria-hidden="true">
-            <span className="block h-1.5 w-24 rounded-full bg-white/[0.07]" />
-            <span className="block h-1.5 w-16 rounded-full bg-white/[0.07]" />
-            <span className="block h-1.5 w-20 rounded-full bg-white/[0.07]" />
-          </div>
-          <p className="text-[13px] text-mute">
-            Nothing graded yet. After your first debrief, the kinds of bug you miss most show up
-            here, and problems that match them come first.
-          </p>
-        </div>
-      ) : (
-        <ul className="mt-4 flex flex-col gap-3">
-          {seen.map((s) => {
-            const rate = s.miss_rate ?? 0;
-            return (
-              <li key={s.category} className="grid grid-cols-[11.5rem_1fr_3rem] items-center gap-4">
-                <span>{CATEGORY_LABEL[s.category]}</span>
-                <Bar
-                  value={rate}
-                  tone={rateTone(rate)}
-                  label={`${CATEGORY_LABEL[s.category]}: missed ${s.misses} of ${s.attempts}`}
-                />
-                <span className="text-right font-mono text-[13px] text-mute">{percent(rate)}</span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <ul className="mt-4 flex flex-col gap-3">
+        {seen.map((s) => {
+          const rate = s.miss_rate ?? 0;
+          return (
+            <li key={s.category} className="grid grid-cols-[11.5rem_1fr_3rem] items-center gap-4">
+              <span>{CATEGORY_LABEL[s.category]}</span>
+              <Bar
+                value={rate}
+                tone={rateTone(rate)}
+                label={`${CATEGORY_LABEL[s.category]}: missed ${s.misses} of ${s.attempts}`}
+              />
+              <span className="text-right font-mono text-[13px] text-mute">{percent(rate)}</span>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }
 
-function Result({ p }: { p: ProblemCard }) {
-  if (p.best_found != null && p.best_bugs != null) {
-    const minutes = Math.max(1, Math.round((p.best_seconds ?? 0) / 60));
-    const all = p.best_found === p.best_bugs;
-    return (
-      <Chip tone={all ? "green" : "amber"} dot>
-        Best {p.best_found} of {plural(p.best_bugs, "bug")} · {minutes} min
-      </Chip>
-    );
-  }
-  return p.attempts > 0 ? (
-    <Chip tone="amber" dot>
-      Started, not finished
-    </Chip>
-  ) : (
-    <Chip dot>Not attempted</Chip>
-  );
-}
+// ---- tiles and groups ----
 
-function Card(props: {
-  problem: ProblemCard;
-  index: number;
-  selected: boolean;
-  onSelect: () => void;
-}) {
+function Tile(props: { problem: ProblemCard; selected: boolean; onSelect: () => void }) {
   const p = props.problem;
-  const [repo, name] = problemTitle(p.origin_repo, p.files).split(": ");
+  const s = status(p);
   return (
     <button
       type="button"
       aria-pressed={props.selected}
       onClick={props.onSelect}
-      style={stagger(props.index)}
-      className={`surface surface-hover rise group relative flex flex-col gap-3 px-5 py-5 text-left ${
-        props.selected ? "surface-selected" : ""
+      title={`${p.id} · ${p.files.join(", ")}`}
+      className={`tile flex min-h-[4.25rem] items-center gap-3 px-3 py-2.5 text-left ${
+        props.selected ? "tile-selected" : ""
       }`}
     >
-      <span className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[12.5px] text-mute">{p.id}</span>
-        {props.selected ? (
-          <span className="flex size-6 items-center justify-center rounded-full bg-cyan text-bg">
-            <Check className="size-3.5" />
-          </span>
-        ) : (
-          <Chip tone={p.source === "swebench" ? "cyan" : "amber"} mono>
-            {SOURCE_LABEL[p.source]}
-          </Chip>
-        )}
-      </span>
-      <span className="min-w-0" title={p.files.join("\n")}>
-        <span className="block truncate text-[12.5px] text-mute">{repo}</span>
-        <span className="block truncate text-[19px] leading-snug font-semibold tracking-tight">
-          {name ?? repo}
+      <Avatar p={p} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate leading-snug font-semibold">{fileName(p)}</span>
+        <span className="block truncate text-[12.5px] text-mute">
+          {repoName(p)} · {p.lines} lines
         </span>
       </span>
-      <span className="flex items-center gap-2 text-[13px] text-mute">
-        <FileCode className="size-4 shrink-0 opacity-70" />
-        Python · {plural(p.files.length, "file")} · {p.lines} lines
-      </span>
-      <span className="mt-1 flex items-center justify-between gap-2">
-        <Result p={p} />
-        <ArrowRight className="size-4 -translate-x-1 text-cyan opacity-0 transition duration-200 group-hover:translate-x-0 group-hover:opacity-100" />
+      <span className="flex shrink-0 flex-col items-end gap-1 font-mono text-[11.5px]">
+        <span className="text-mute/80">{p.id}</span>
+        <span className={`flex items-center gap-1.5 ${s.tone}`}>
+          <span className={`size-1.5 rounded-full ${s.dot}`} />
+          {s.text}
+        </span>
       </span>
     </button>
   );
 }
+
+interface Group {
+  key: string;
+  label: string;
+  note: ReactNode;
+  problems: ProblemCard[];
+}
+
+function groupProblems(problems: ProblemCard[], by: Grouping, stats: CategoryStat[]): Group[] {
+  if (by === "project") {
+    const map = new Map<string, ProblemCard[]>();
+    for (const p of problems) map.set(repoName(p), [...(map.get(repoName(p)) ?? []), p]);
+    return [...map.entries()]
+      .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
+      .map(([name, list]) => ({ key: name, label: name, note: null, problems: list }));
+  }
+  const rate = new Map(stats.map((s) => [s.category, s]));
+  const groups: Group[] = [];
+  for (const category of CATEGORIES) {
+    const list = problems.filter((p) => p.categories.includes(category as BugCategory));
+    if (list.length === 0) continue;
+    const s = rate.get(category);
+    groups.push({
+      key: category,
+      label: CATEGORY_LABEL[category],
+      note:
+        s && s.attempts > 0 ? (
+          <Chip tone={rateTone(s.miss_rate ?? 0)} dot>
+            you miss {percent(s.miss_rate)}
+          </Chip>
+        ) : null,
+      problems: list,
+    });
+  }
+  // Weakest categories first, then the biggest groups.
+  const missed = (g: Group) => rate.get(g.key as BugCategory)?.miss_rate ?? -1;
+  return groups.sort((a, b) => missed(b) - missed(a) || b.problems.length - a.problems.length);
+}
+
+// ---- setup panel ----
 
 function Stepper(props: {
   label: string;
@@ -275,7 +458,7 @@ function Setup(props: {
           <p className="mt-1 text-[13px] text-mute">
             {selected
               ? `${selected.id} · Python · ${plural(selected.files.length, "file")} · ${selected.lines} lines`
-              : `Weighted by your weak spots${source === "all" ? "" : `, from ${SOURCE_LABEL[source]}`}. Or choose a card.`}
+              : `Weighted by your weak spots${source === "all" ? "" : `, from ${SOURCE_LABEL[source]}`}. Or choose a problem.`}
           </p>
         </div>
 
@@ -371,10 +554,14 @@ function LoadingBoard() {
     <div className="mx-auto grid max-w-[1500px] gap-6 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="flex flex-col gap-6">
         <Skeleton className="h-10 w-72" />
-        <Skeleton className="h-28" />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }, (_, i) => (
-            <Skeleton key={i} className="h-40" />
+        <div className="grid gap-4 md:grid-cols-3">
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 9 }, (_, i) => (
+            <Skeleton key={i} className="h-[4.25rem]" />
           ))}
         </div>
       </div>
@@ -389,6 +576,7 @@ export default function Library() {
   const settings = useQuery({ queryKey: ["settings"], queryFn: api.settings });
   const sessions = useQuery({ queryKey: ["sessions"], queryFn: api.sessions });
   const [source, setSource] = useState<SourceFilter>("all");
+  const [grouping, setGrouping] = useState<Grouping>("category");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const header = <Header sessions={sessions.data ?? []} />;
@@ -414,8 +602,10 @@ export default function Library() {
 
   const all = problems.data;
   const visible = all.filter((p) => source === "all" || p.source === source);
-  const selected = visible.find((p) => p.id === selectedId) ?? null;
-  const count = (s: SourceFilter) => (s === "all" ? all.length : all.filter((p) => p.source === s).length);
+  const selected = all.find((p) => p.id === selectedId) ?? null;
+  const toggle = (id: string) => setSelectedId((current) => (current === id ? null : id));
+  const count = (s: SourceFilter) =>
+    s === "all" ? all.length : all.filter((p) => p.source === s).length;
   const filters: { value: SourceFilter; label: string }[] = [
     { value: "all", label: "All" },
     { value: "swebench", label: SOURCE_LABEL.swebench },
@@ -423,59 +613,30 @@ export default function Library() {
   ];
   const projects = new Set(all.map((p) => p.origin_repo)).size;
   const attempted = all.filter((p) => p.attempts > 0).length;
+  const groups = groupProblems(visible, grouping, stats.data);
 
   return (
     <>
       {header}
       <div className="mx-auto grid max-w-[1500px] gap-6 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <div className="rise">
-            <h1 className="text-[2.5rem] leading-tight font-semibold tracking-tight">
-              Pick a{" "}
-              <span className="bg-gradient-to-r from-[#8fe3f8] to-cyan bg-clip-text text-transparent">
-                problem
-              </span>
-            </h1>
-            <p className="mt-2 max-w-2xl text-[15px] text-mute">
-              Each one is a real file you have not seen, with a bug you have to find. Problems
-              that match your weak spots come first.
-            </p>
-            <p className="mt-4 flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-col gap-7">
+          <div className="rise flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-[2.25rem] leading-tight font-semibold tracking-tight">
+                Pick a{" "}
+                <span className="bg-gradient-to-r from-[#8fe3f8] to-cyan bg-clip-text text-transparent">
+                  problem
+                </span>
+              </h1>
+              <p className="mt-1.5 max-w-2xl text-[15px] text-mute">
+                Each one is a real file you have not seen, with a bug you have to find.
+              </p>
+            </div>
+            <p className="flex flex-wrap gap-2">
               <Chip>{plural(all.length, "problem")}</Chip>
               <Chip>{plural(projects, "project")}</Chip>
               <Chip tone={attempted > 0 ? "cyan" : "mute"}>{attempted} attempted</Chip>
             </p>
-          </div>
-
-          <WeakSpots stats={stats.data} />
-
-          <div role="group" aria-label="Source" className="rise flex flex-wrap items-center gap-2" style={stagger(2)}>
-            <span className="mr-2 text-[13px] text-mute">Source</span>
-            {filters.map((f) => {
-              const on = source === f.value;
-              return (
-                <button
-                  key={f.value}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setSource(f.value)}
-                  className={`flex min-h-11 items-center gap-2 rounded-full px-4 font-semibold transition duration-200 ${
-                    on
-                      ? "bg-gradient-to-b from-[#74d6f2] to-[#49b9dc] text-bg shadow-[0_8px_22px_-10px_rgb(92_200_232/0.8)]"
-                      : "border border-line text-ink hover:border-mute/60 hover:bg-white/[0.04]"
-                  }`}
-                >
-                  {f.label}
-                  <span
-                    className={`rounded-full px-1.5 py-0.5 font-mono text-[11.5px] leading-none ${
-                      on ? "bg-bg/20" : "bg-white/[0.07] text-mute"
-                    }`}
-                  >
-                    {count(f.value)}
-                  </span>
-                </button>
-              );
-            })}
           </div>
 
           {all.length === 0 ? (
@@ -486,17 +647,83 @@ export default function Library() {
               </code>
             </Notice>
           ) : (
-            <div key={source} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {visible.map((p, i) => (
-                <Card
-                  key={p.id}
-                  problem={p}
-                  index={i + 3}
-                  selected={p.id === selected?.id}
-                  onSelect={() => setSelectedId(p.id === selected?.id ? null : p.id)}
-                />
-              ))}
-            </div>
+            <>
+              <Spotlight problems={all} selectedId={selectedId} onSelect={toggle} />
+              <WeakSpots stats={stats.data} />
+
+              <section className="rise flex flex-col gap-5" style={stagger(3)}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div role="group" aria-label="Source" className="flex flex-wrap items-center gap-2">
+                    {filters.map((f) => {
+                      const on = source === f.value;
+                      return (
+                        <button
+                          key={f.value}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => setSource(f.value)}
+                          className={`flex min-h-11 items-center gap-2 rounded-full px-4 font-semibold transition duration-200 ${
+                            on
+                              ? "bg-gradient-to-b from-[#74d6f2] to-[#49b9dc] text-bg shadow-[0_8px_22px_-10px_rgb(92_200_232/0.8)]"
+                              : "border border-line text-ink hover:border-mute/60 hover:bg-white/[0.04]"
+                          }`}
+                        >
+                          {f.label}
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 font-mono text-[11.5px] leading-none ${
+                              on ? "bg-bg/20" : "bg-white/[0.07] text-mute"
+                            }`}
+                          >
+                            {count(f.value)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[13px] text-mute">Group by</span>
+                    <div className="w-60">
+                      <Segmented
+                        label="Group problems by"
+                        value={grouping}
+                        onChange={setGrouping}
+                        compact
+                        options={[
+                          { value: "category", label: "Bug category" },
+                          { value: "project", label: "Project" },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div key={`${source}-${grouping}`} className="fade flex flex-col gap-6">
+                  {groups.map((g) => (
+                    <section key={g.key} aria-label={g.label}>
+                      <h3 className="mb-2.5 flex items-center gap-3">
+                        <span className="font-semibold">{g.label}</span>
+                        <span className="rounded-full bg-white/[0.07] px-2 py-0.5 font-mono text-[11.5px] leading-none text-mute">
+                          {g.problems.length}
+                        </span>
+                        {g.note}
+                        <span className="h-px flex-1 bg-white/[0.06]" aria-hidden="true" />
+                      </h3>
+                      <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+                        {g.problems.map((p) => (
+                          <Tile
+                            key={p.id}
+                            problem={p}
+                            selected={p.id === selectedId}
+                            onSelect={() => toggle(p.id)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                  {groups.length === 0 && <p className="text-mute">No problems from this source.</p>}
+                </div>
+              </section>
+            </>
           )}
         </div>
         <Setup settings={settings.data} selected={selected} source={source} />

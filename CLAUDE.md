@@ -235,7 +235,7 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 - Every build run writes a summary (candidates, kept, dropped by reason) to `data/logs/`.
 
 ### Session API (`api/sessions.py`)
-- `GET /api/problems`: list with stats (attempts, last attempt, best graded result), ordered not-attempted first and then by picker weight. No answer data: with one bug per problem, the category, upstream id and commit would all point at the answer, so cards omit them.
+- `GET /api/problems`: list with stats (attempts, last attempt, best graded result), ordered not-attempted first and then by picker weight. Cards omit the upstream id and commit, which would lead straight to the fix. They do carry `categories`: on 14 Nov 2026 the owner asked for the Library to be grouped by bug category, accepting that with one bug per problem this names the kind of bug before the session. This is the one owner-approved exception to invariant 1; nothing else from the answer key may be added to this endpoint.
 - `GET /api/stats`: per-category attempts, misses and miss rate (the weak-spot bars). `GET /api/settings`: defaults and which modes are available. `GET /api/sessions`: session history.
 - `POST /api/sessions` `{problem_id?, mode, ctx_cap, q_budget}`: if `problem_id` is missing, use the weighted picker.
 - `GET /api/sessions/{id}`: files (src only), settings, time left, questions used.
@@ -277,7 +277,7 @@ After grading, update `category_stats` from that session's key bugs (each attemp
 ## 8. Frontend
 
 The approved mockups are on the design canvas (boards: Library, Session, Debrief, Architecture); the owner's export is `Code Comprehension Practice Platform.pdf`. The three pages were rebuilt to those boards on 12 Nov 2026. Follow them:
-- **Dark IDE look:** background `#0E1116`, panels `#151A21`, borders `#2A333F`, text `#E6EAF0` / `#9AA6B5`, accent cyan `#5CC8E8`, amber `#F2B24A` (timer, Realistic mode), coral `#FF7A6B` (flags and misses), green `#6FD08C`. Fonts are IBM Plex Sans for UI and IBM Plex Mono for code and numbers.
+- **Dark IDE look:** background `#06080B`, panels `#0C1015`, raised `#141A22`, borders `#1D2530` (darkened from the boards' `#0E1116` / `#151A21` / `#2A333F` at the owner's request on 14 Nov 2026), text `#E6EAF0` / `#9AA6B5`, accent cyan `#5CC8E8`, amber `#F2B24A` (timer, Realistic mode), coral `#FF7A6B` (flags and misses), green `#6FD08C`. Fonts are IBM Plex Sans for UI and IBM Plex Mono for code and numbers.
 - **Session:** a file tree on the left. In the centre, read-only Monaco with the line selection driving the "Ask assistant" and "Flag as bug" actions, plus decorations for flagged lines. On the right, the assistant panel with a context-window bar, budget pips, the thread, and refusal notices. The report form sits under the editor.
 - **Library:** weak-spot bars, source filters, problem cards, and the session setup panel.
 - **Debrief:** stat tiles, answer key against your findings, assistant claim audit, judge notes, and the change in category stats.
@@ -286,7 +286,8 @@ The approved mockups are on the design canvas (boards: Library, Session, Debrief
 Where the app differs from the boards, and why:
 - **Brand:** the boards say `readcode`; the app says `scholia`.
 - **Problem titles:** problems have ids, not names, so a title is derived as `<repo>: <file stem>` (`django: deletion`).
-- **Card hints:** the boards show "Targets concurrency" on cards. With one bug per problem that names the bug's category before the session, so it is left out. Cards are still ordered so weak-spot problems come first, as the board's subtitle says; the weights never reach the client.
+- **Home screen (14 Nov 2026, owner's request):** a Spotlight row shows three random problems (not-attempted ones first) and reshuffles every 12 seconds, pausing while hovered or focused. Below it, every problem is a compact tile, grouped by bug category (weakest category first) with a switch to group by project instead, which does not name the kind of bug. The big cards from the boards are gone: the owner found them ugly.
+- **Git diff on the debrief:** "The fix" card shows the upstream diff with old and new line numbers (`components/DiffView.tsx`). It is never shown during a session.
 - **Sources:** the filter pills are All / SWE-bench Lite / BugsInPy (the boards' Mined and Mutated tiers are M6).
 - **Mode switch on the Session bar:** it shows the session's mode and cannot be changed mid-session, because the mode is fixed when the session starts.
 - **Flagging:** the board does not show how a finding is added. Selecting lines shows "Ask assistant" and "Flag as bug" in the file header.

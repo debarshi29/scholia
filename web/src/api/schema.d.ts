@@ -493,8 +493,10 @@ export interface components {
         OutcomeStatus: "found" | "partial" | "missed" | "extra" | "ungraded";
         /**
          * ProblemCard
-         * @description A library entry. Deliberately has no category, upstream id or commit: with one bug
-         *     per problem, any of those would point at the answer.
+         * @description A library entry. It has no upstream id or commit, which would lead straight to the
+         *     fix. It does carry ``categories``: the owner asked for the Library to be grouped by bug
+         *     category (14 Nov 2026), knowing that with one bug per problem this names the kind of
+         *     bug before the session. Nothing else from the answer key is here.
          */
         ProblemCard: {
             /** Id */
@@ -512,6 +514,8 @@ export interface components {
             files: string[];
             /** Lines */
             lines: number;
+            /** Categories */
+            categories: components["schemas"]["BugCategory"][];
             /** Attempts */
             attempts: number;
             /** Last Attempt At */

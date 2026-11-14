@@ -40,6 +40,7 @@ CARD_FIELDS = {
     "licence",
     "files",
     "lines",
+    "categories",
     "attempts",
     "last_attempt_at",
     "best_found",
@@ -60,6 +61,7 @@ async def test_problems_list_has_stats_and_no_answer_data(lab: Lab) -> None:
     assert second["attempts"] == 0 and second["last_attempt_at"] is None
     assert first["files"] == ["pkg/core.py", "pkg/util.py"] and first["lines"] == 360
     assert first["best_found"] is None  # started, not graded yet
+    assert first["categories"] == ["boundary"] and second["categories"] == ["concurrency"]
     assert set(first) == CARD_FIELDS
 
 
@@ -319,6 +321,7 @@ def _card(pid: str, repo: str) -> ProblemCard:
         licence="MIT",
         files=["a.py"],
         lines=200,
+        categories=[BugCategory.LOGIC],
         attempts=0,
         last_attempt_at=None,
         best_found=None,

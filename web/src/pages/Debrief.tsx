@@ -12,6 +12,7 @@ import {
   type DebriefFinding,
   type OutcomeStatus,
 } from "../api/client";
+import DiffView from "../components/DiffView";
 import { ArrowLeft, ArrowRight, Chevron, Refresh } from "../components/icons";
 import {
   Bar,
@@ -102,29 +103,6 @@ function Card(props: {
   );
 }
 
-function Diff({ text }: { text: string }) {
-  return (
-    <pre className="mt-2 overflow-x-auto rounded-xl border border-line bg-bg/80 p-3 font-mono text-[12px] leading-5">
-      {text.split("\n").map((line, i) => {
-        const added = line.startsWith("+") && !line.startsWith("+++");
-        const removed = line.startsWith("-") && !line.startsWith("---");
-        const tone = added
-          ? "bg-green/10 text-green"
-          : removed
-            ? "bg-coral/10 text-coral"
-            : line.startsWith("@@")
-              ? "text-cyan"
-              : "text-mute";
-        return (
-          <span key={i} className={`block px-1 ${tone}`}>
-            {line || " "}
-          </span>
-        );
-      })}
-    </pre>
-  );
-}
-
 function More(props: { label: string; children: ReactNode }) {
   return (
     <details className="group mt-1">
@@ -154,8 +132,8 @@ function BugRow({ bug }: { bug: DebriefBug }) {
           {CATEGORY_LABEL[bug.category]}
           {bug.assisted && <Chip tone="cyan">a question covered these lines</Chip>}
         </p>
-        <More label={f ? "Your finding, the judge's scores and the reference fix" : "Reference fix"}>
-          {f && (
+        {f && (
+          <More label="Your finding and the judge's scores">
             <div className="rounded-xl border border-line border-l-[3px] border-l-coral bg-bg/70 p-3.5">
               <p className="font-mono text-[12px] text-mute">
                 You flagged {baseName(f.file)} {lref(f.line_from, f.line_to)} ·{" "}
@@ -168,12 +146,8 @@ function BugRow({ bug }: { bug: DebriefBug }) {
                 <Chip mono>fix {bug.judge_fix ?? "–"}/2</Chip>
               </p>
             </div>
-          )}
-          <Diff text={bug.fix_diff} />
-          {bug.killing_test && (
-            <p className="mt-2 font-mono text-[12px] text-mute">Failing test: {bug.killing_test}</p>
-          )}
-        </More>
+          </More>
+        )}
       </div>
       <Chip tone={s.tone} dot>
         {s.label}
@@ -440,8 +414,27 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
           </Card>
         </div>
 
+        <Card
+          index={7}
+          title="The fix"
+          note="The upstream git diff that fixed this bug. Old line numbers on the left, new on the right."
+        >
+          <div className="flex flex-col gap-4">
+            {d.bugs.map((b) => (
+              <div key={b.id}>
+                <DiffView diff={b.fix_diff} />
+                {b.killing_test && (
+                  <p className="mt-2 font-mono text-[12px] text-mute">
+                    Test that fails before the fix: {b.killing_test}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+
         <div className="grid items-start gap-5 xl:grid-cols-2">
-          <Card index={7} title="Judge notes">
+          <Card index={8} title="Judge notes">
             <div className="flex flex-col gap-4 leading-relaxed">
               {notes.map((n, i) => (
                 <p key={i}>{n}</p>
@@ -472,7 +465,7 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
               </div>
             </div>
           </Card>
-          <Changes d={d} index={8} />
+          <Changes d={d} index={9} />
         </div>
 
         <p className="fade font-mono text-[12px] text-mute/80">

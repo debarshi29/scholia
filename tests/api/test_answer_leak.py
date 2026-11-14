@@ -10,18 +10,21 @@ ANSWER_FIELDS = ("mechanism", "fix_diff", "killing_test", "upstream_id", "commit
 SEL = {"file": "pkg/core.py", "line_from": 50, "line_to": 52}
 
 
-def assert_clean(text: str) -> None:
+def assert_clean(text: str, allow: tuple[str, ...] = ()) -> None:
     for secret in SECRETS:
         assert secret not in text
     for name in ANSWER_FIELDS:
-        assert f'"{name}' not in text
+        if name not in allow:
+            assert f'"{name}' not in text
 
 
 async def test_live_session_endpoints_never_return_answer_data(lab: Lab) -> None:
     sid = (await lab.start(problem_id=lab.problem_ids[0]))["id"]
     c = lab.client
+    # The Library groups problems by bug category at the owner's request, so the problem
+    # list (and only it) may name categories. Everything else from the key stays out.
+    assert_clean((await c.get("/api/problems")).text, allow=("categor",))
     bodies = [
-        (await c.get("/api/problems")).text,
         (await c.get("/api/settings")).text,
         (await c.get("/api/sessions")).text,
         (await c.get(f"/api/sessions/{sid}")).text,
