@@ -9,7 +9,16 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from api.config import Settings, get_settings
-from api.db import ClaimAuditRow, FindingRow, OutcomeRow, QueryRow, as_utc, get_db
+from api.db import (
+    ClaimAuditRow,
+    FindingRow,
+    FixResultRow,
+    OutcomeRow,
+    PatchRow,
+    QueryRow,
+    as_utc,
+    get_db,
+)
 from api.deps import get_grader, get_store
 from api.errors import ApiError
 from api.grader.run import Grader, answered
@@ -33,6 +42,23 @@ class DebriefFinding(BaseModel):
     fix: str
 
 
+class DebriefFix(BaseModel):
+    """How the submitted code fix did against one key bug."""
+
+    submitted: bool
+    on_target: bool
+    syntax_error: str | None
+    judge_fix: int | None
+    judge_notes: str
+    tests: str | None
+    tests_detail: str
+
+
+class DebriefPatch(BaseModel):
+    file: str
+    diff: str
+
+
 class DebriefBug(BaseModel):
     id: str
     file: str
@@ -49,6 +75,7 @@ class DebriefBug(BaseModel):
     judge_mechanism: int | None
     judge_fix: int | None
     judge_notes: str
+    fix: DebriefFix | None
 
 
 class DebriefAudit(BaseModel):
@@ -116,10 +143,26 @@ class Debrief(BaseModel):
     totals: DebriefTotals
     bugs: list[DebriefBug]
     extras: list[DebriefFinding]
+    patches: list[DebriefPatch]
+    """Every file the user edited, as a diff from the buggy original."""
     audits: list[DebriefAudit]
     design: DebriefDesign
     stats_delta: list[StatDelta]
     judge_model: str | None
+
+
+def _fix(row: FixResultRow | None) -> DebriefFix | None:
+    if row is None:
+        return None
+    return DebriefFix(
+        submitted=row.submitted,
+        on_target=row.on_target,
+        syntax_error=row.syntax_error,
+        judge_fix=row.judge_fix,
+        judge_notes=row.judge_notes,
+        tests=row.tests,
+        tests_detail=row.tests_detail,
+    )
 
 
 def _finding(row: FindingRow) -> DebriefFinding:
@@ -182,6 +225,15 @@ async def debrief(
     }
 
     by_bug = {o.bug_id: o for o in outcomes if o.bug_id is not None}
+    fix_rows = (
+        await db.exec(select(FixResultRow).where(FixResultRow.session_id == session_id))
+    ).all()
+    fixes = {r.bug_id: r for r in fix_rows}
+    patch_rows = (
+        await db.exec(
+            select(PatchRow).where(PatchRow.session_id == session_id).order_by(col(PatchRow.file))
+        )
+    ).all()
     bugs: list[DebriefBug] = []
     for bug in answer.bugs:
         o = by_bug[bug.id]
@@ -203,6 +255,7 @@ async def debrief(
                 judge_mechanism=o.judge_mechanism,
                 judge_fix=o.judge_fix,
                 judge_notes=o.judge_notes,
+                fix=_fix(fixes.get(bug.id)),
             )
         )
     extras = [
@@ -265,6 +318,7 @@ async def debrief(
         totals=totals,
         bugs=bugs,
         extras=extras,
+        patches=[DebriefPatch(file=p.file, diff=p.diff) for p in patch_rows],
         audits=audit_items,
         design=DebriefDesign(
             notes=session.design_notes,

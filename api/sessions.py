@@ -21,6 +21,7 @@ from api.db import (
     CategoryStatRow,
     FindingRow,
     OutcomeRow,
+    PatchRow,
     ProblemRow,
     QueryRow,
     SessionRow,
@@ -29,6 +30,7 @@ from api.db import (
 )
 from api.deps import get_grader, get_proxy, get_store
 from api.errors import ApiError
+from api.grader.fix import unified
 from api.grader.run import Grader
 from api.problems import ProblemFileError, ProblemStore
 from api.proxy import (
@@ -190,6 +192,8 @@ class SubmitResult(BaseModel):
     submitted_at: datetime
     overtime: bool
     findings: int
+    patches: int = 0
+    """Files whose edited copy differs from the original."""
 
 
 # ---------- helpers ----------
@@ -521,6 +525,17 @@ async def freeze_report(
             raise ApiError(
                 422, "invalid_finding", f"{f.file} has {lengths[f.file]} lines, got {f.line_to}"
             )
+    patches: list[PatchRow] = []
+    for patch in report.patches:
+        try:
+            original = await store.read_src(session.problem_id, session.problem_version, patch.file)
+        except ProblemFileError as exc:
+            raise ApiError(422, "invalid_patch", f"Unknown file {patch.file!r}") from exc
+        diff = unified(patch.file, original, patch.content)
+        if diff:  # an unchanged file is not a fix
+            patches.append(
+                PatchRow(session_id=session.id, file=patch.file, content=patch.content, diff=diff)
+            )
     submitted = now()
     session.submitted_at = submitted
     session.overtime = elapsed_seconds(session, submitted) > settings.session_minutes * 60
@@ -528,9 +543,14 @@ async def freeze_report(
     db.add(session)
     for f in report.findings:
         db.add(FindingRow(session_id=session.id, **f.model_dump()))
+    for row in patches:
+        db.add(row)
     await db.commit()
     return SubmitResult(
-        submitted_at=submitted, overtime=session.overtime, findings=len(report.findings)
+        submitted_at=submitted,
+        overtime=session.overtime,
+        findings=len(report.findings),
+        patches=len(patches),
     )
 
 
