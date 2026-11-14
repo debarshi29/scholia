@@ -219,6 +219,7 @@ def test_build_log_written(tmp_path: Path) -> None:
     path = log.write(tmp_path / "logs")
     payload = json.loads(path.read_text())
     assert payload["summary"] == {
+        "skipped_by_topic": 0,
         "candidates": 2,
         "kept": 1,
         "dropped": {"licence_not_allowed": 1},

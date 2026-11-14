@@ -59,6 +59,8 @@ uv run python -m corpus.build --tier 0 --source swebench --limit 20
 uv run python -m corpus.build --tier 0 --source bugsinpy --limit 20
 ```
 
+Only projects in `LIBRARY_TOPICS` are built and shown (default `ml,scientific,math`: scikit-learn, keras, spaCy, sympy, astropy, xarray, pandas). Pass `--topics all` to build everything, and set `LIBRARY_TOPICS=` (empty) in `.env` to show everything.
+
 `--limit` is the number of problems to publish. Already published problems are skipped, so running it again adds more. Each run writes a log to `data/logs/` that accounts for every candidate (kept, or dropped with a reason).
 
 ## Windows Smart App Control

@@ -47,6 +47,7 @@ from corpus.repos import CheckoutError, LicenceResolver, RepoCache
 from corpus.sanitise import SanitiseError, sanitise
 from corpus.sources.base import Candidate, CandidateSource
 from corpus.text import split_lines
+from corpus.topics import Topic, allowed, parse_topics
 from schema import Bug, CategorySource, Source
 
 log = logging.getLogger("corpus.build")
@@ -79,12 +80,16 @@ class BuildLog:
     started_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     finished_at: str = ""
     prompt_version: str | None = None
+    topics: str = ""
+    skipped_by_topic: int = 0
+    """Candidates from projects outside the selected topics; they are not examined."""
     candidates_seen: int = 0
     kept: list[dict[str, str]] = field(default_factory=list)
     dropped: list[dict[str, str]] = field(default_factory=list)
 
     def summary(self) -> dict[str, object]:
         return {
+            "skipped_by_topic": self.skipped_by_topic,
             "candidates": self.candidates_seen,
             "kept": len(self.kept),
             "dropped": dict(Counter(d["reason"] for d in self.dropped).most_common()),
@@ -221,10 +226,17 @@ def run(
     repos: RepoCache,
     licences: LicenceResolver,
     classifier: Classifier | None,
+    topics: frozenset[Topic] = frozenset(),
 ) -> list[Published]:
     """Scan candidates until ``build_log.limit`` are kept. ``classifier=None`` is a dry run."""
     published: list[Published] = []
-    for cand in round_robin(candidates):
+    wanted = []
+    for cand in candidates:
+        if allowed(cand.repo, topics):
+            wanted.append(cand)
+        else:
+            build_log.skipped_by_topic += 1
+    for cand in round_robin(wanted):
         if len(build_log.kept) >= build_log.limit:
             break
         build_log.candidates_seen += 1
@@ -276,9 +288,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dry-run", action="store_true", help="run deterministic checks only; publish nothing"
     )
+    parser.add_argument(
+        "--topics",
+        default=None,
+        help="comma-separated topics to keep (default: LIBRARY_TOPICS; 'all' for every topic)",
+    )
     args = parser.parse_args(argv)
     configure_logging()
     settings = get_settings()
+    if args.topics is None:
+        args.topics = settings.library_topics
+    elif args.topics.strip().lower() == "all":
+        args.topics = ""
+    try:
+        topics = parse_topics(args.topics)
+    except ValueError as exc:
+        print(f"unknown topic: {exc}", file=sys.stderr)
+        return 2
 
     classifier: Classifier | None = None
     if not args.dry_run:
@@ -300,6 +326,7 @@ def main(argv: list[str] | None = None) -> int:
         tier=args.tier,
         limit=args.limit,
         dry_run=args.dry_run,
+        topics=args.topics,
         prompt_version=classifier.prompt_version if classifier else None,
     )
     published = run(
@@ -309,6 +336,7 @@ def main(argv: list[str] | None = None) -> int:
         repos=repos,
         licences=LicenceResolver(data_dir / "repos", repos),
         classifier=classifier,
+        topics=topics,
     )
     build_log.finished_at = datetime.now(UTC).isoformat()
     if published:

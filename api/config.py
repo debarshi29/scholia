@@ -4,8 +4,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from corpus.topics import Topic, parse_topics
 
 
 class Settings(BaseSettings):
@@ -52,6 +54,20 @@ class Settings(BaseSettings):
     gemini_thinking_tokens: int = Field(default=2048, ge=0)
     """Extra output-token allowance for the Gemini model's hidden reasoning, on top of
     ``max_reply_tokens`` / ``judge_max_tokens``."""
+
+    # Corpus
+    library_topics: str = "ml,scientific,math"
+    """Topics to build and show (see ``corpus/topics.py``). Empty means every topic."""
+
+    @property
+    def topics(self) -> frozenset[Topic]:
+        return parse_topics(self.library_topics)
+
+    @field_validator("library_topics")
+    @classmethod
+    def _known_topics(cls, value: str) -> str:
+        parse_topics(value)  # raises ValueError on an unknown topic name
+        return value
 
     # Storage
     db_path: Path = Path("data/scholia.db")
