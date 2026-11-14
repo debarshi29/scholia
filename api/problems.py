@@ -11,6 +11,8 @@ from pathlib import Path, PurePosixPath
 from corpus.text import split_lines
 from schema import ProblemMeta
 
+_META_CACHE: dict[str, ProblemMeta] = {}
+
 
 class ProblemFileError(LookupError):
     pass
@@ -35,8 +37,11 @@ class ProblemStore:
 
     async def meta(self, problem_id: str, version: int) -> ProblemMeta:
         path = self._version_dir(problem_id, version) / "meta.json"
-        text = await asyncio.to_thread(path.read_text, encoding="utf-8")
-        return ProblemMeta.model_validate_json(text)
+        key = str(path.resolve())
+        if key not in _META_CACHE:  # published versions never change, so this is safe
+            text = await asyncio.to_thread(path.read_text, encoding="utf-8")
+            _META_CACHE[key] = ProblemMeta.model_validate_json(text)
+        return _META_CACHE[key]
 
     async def src_files(self, problem_id: str, version: int) -> list[str]:
         src = self._version_dir(problem_id, version) / "src"

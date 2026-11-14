@@ -40,6 +40,7 @@ from api.proxy import (
     RefusalReason,
     questions_used,
 )
+from corpus.topics import allowed
 from schema import AssistantMode, BugCategory, OutcomeStatus, Report, Source
 
 router = APIRouter(prefix="/api", tags=["sessions"])
@@ -235,6 +236,25 @@ async def latest_problems(db: AsyncSession) -> list[ProblemRow]:
     return list(latest.values())
 
 
+async def visible_problems(
+    db: AsyncSession, store: ProblemStore, settings: Settings
+) -> list[ProblemRow]:
+    """Latest versions whose project is in the configured topics (``LIBRARY_TOPICS``).
+    Other problems stay published and their sessions stay readable; they are not offered."""
+    rows = await latest_problems(db)
+    if not settings.topics:
+        return rows
+    out: list[ProblemRow] = []
+    for row in rows:
+        try:
+            meta = await store.meta(row.id, row.version)
+        except ProblemFileError:
+            continue
+        if allowed(meta.origin_repo, settings.topics):
+            out.append(row)
+    return out
+
+
 def _thread_item(q: QueryRow) -> ThreadItem:
     assert q.id is not None
     reason = RefusalReason(q.refused_reason) if q.refused_reason else None
@@ -299,7 +319,7 @@ def mix_projects(cards: list[ProblemCard], ranks: list[tuple[bool, float]]) -> l
 
 
 @router.get("/problems", response_model=list[ProblemCard])
-async def list_problems(db: Db, store: Store) -> list[ProblemCard]:
+async def list_problems(db: Db, store: Store, settings: Config) -> list[ProblemCard]:
     stmt = select(SessionRow.problem_id, func.count(), func.max(SessionRow.started_at)).group_by(
         col(SessionRow.problem_id)
     )
@@ -309,7 +329,7 @@ async def list_problems(db: Db, store: Store) -> list[ProblemCard]:
     # Not attempted first, then by picker weight: weak spots come first. The weight
     # itself and the categories behind it are never sent to the client.
     ordered = sorted(
-        await latest_problems(db),
+        await visible_problems(db, store, settings),
         key=lambda p: (p.id in attempts, -problem_weight(p.categories, rates), p.id),
     )
     cards: list[ProblemCard] = []
@@ -429,7 +449,7 @@ async def list_sessions(db: Db) -> list[SessionSummary]:
 
 @router.post("/sessions", response_model=SessionView, status_code=201)
 async def create_session(req: SessionCreate, db: Db, store: Store, settings: Config) -> SessionView:
-    problems = await latest_problems(db)
+    problems = await visible_problems(db, store, settings)
     if req.problem_id is not None:
         problem = next((p for p in problems if p.id == req.problem_id), None)
         if problem is None:

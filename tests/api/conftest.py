@@ -120,6 +120,7 @@ async def lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[
     problems = tmp_path / "problems"
     monkeypatch.setenv("DB_PATH", str(tmp_path / "data" / "scholia.db"))
     monkeypatch.setenv("PROBLEMS_DIR", str(problems))
+    monkeypatch.setenv("LIBRARY_TOPICS", "")  # fixture repos have no topic
     ids = [
         publish_fixture(problems, 1, BugCategory.BOUNDARY, Source.SWEBENCH),
         publish_fixture(problems, 2, BugCategory.CONCURRENCY, Source.BUGSINPY, design_notes=False),
