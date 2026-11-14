@@ -1,5 +1,6 @@
 """Local profiles: separate history, stats and defaults, with no login."""
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -117,7 +118,20 @@ async def test_delete_removes_the_profile_and_its_history(lab: Lab) -> None:
             "/api/sessions", json={"problem_id": lab.problem_ids[0]}, headers=_as(ada)
         )
     ).json()["id"]
-    await lab.client.post(f"/api/sessions/{sid}/submit", json={})
+    lab.judge.replies = [json.dumps({"mechanism": 2, "fix": 2}), json.dumps({"score": 1})]
+    finding = {
+        "file": "pkg/core.py",
+        "line_from": 50,
+        "line_to": 52,
+        "category": "boundary",
+        "explanation": "The bound is one short.",
+        "fix": "",
+    }
+    # A graded session has outcomes that point at findings: deletion must handle that.
+    submit = await lab.client.post(
+        f"/api/sessions/{sid}/submit", json={"findings": [finding], "design_notes": "x"}
+    )
+    assert submit.status_code == 200
 
     assert (await lab.client.delete(f"/api/profiles/{ada['id']}")).status_code == 204
     assert (await lab.client.get(f"/api/profiles/{ada['id']}")).status_code == 404
