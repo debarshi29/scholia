@@ -136,7 +136,15 @@ export default function CodeViewer(props: Props) {
         selectionHighlight: true,
         renderWhitespace: "none",
         guides: { indentation: false },
-        padding: { top: 10, bottom: 10 },
+        padding: { top: 12, bottom: 12 },
+        smoothScrolling: true,
+        cursorBlinking: "smooth",
+        cursorSmoothCaretAnimation: "on",
+        roundedSelection: true,
+        fontLigatures: false,
+        scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10, useShadows: false },
+        overviewRulerBorder: false,
+        hideCursorInOverviewRuler: true,
         ariaLabel: `Source code, read only: ${modelPath}`,
       }}
     />

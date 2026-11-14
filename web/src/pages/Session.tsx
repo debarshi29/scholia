@@ -6,36 +6,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type SessionView } from "../api/client";
 import AssistantPanel, { type Selection } from "../components/AssistantPanel";
 import CodeViewer, { type LineRange } from "../components/CodeViewer";
+import { ArrowLeft, ArrowRight, Chat, Eye, FileCode, Flag, Target } from "../components/icons";
 import ReportForm, { findingProblem } from "../components/ReportForm";
 import { Button, errorText, Loading, Notice, Segmented } from "../components/ui";
 import { baseName, clock, lref, plural, problemTitle } from "../lib/format";
 import { Link, navigate } from "../router";
 import { useDraft, useDraftStore, type DraftFinding } from "../store/draft";
 
-function Timer({ session, syncedAt }: { session: SessionView; syncedAt: number }) {
+/** Seconds left, ticking locally from the last server sync. Display only. */
+function useSecondsLeft(session: SessionView, syncedAt: number): number {
   const [now, setNow] = useState(syncedAt);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  const left = session.seconds_left - Math.max(0, (now - syncedAt) / 1000);
-  const over = left <= 0;
-  return (
-    <div
-      role="timer"
-      aria-label={over ? "Time is up" : `Time left: ${clock(left)}`}
-      className="flex items-baseline gap-3"
-    >
-      <span
-        className={`font-mono text-[2rem] leading-none font-medium tabular-nums ${over ? "text-coral" : "text-amber"}`}
-      >
-        {clock(left)}
-      </span>
-      <span className={`text-[13px] ${over ? "text-coral" : "text-mute"}`}>
-        {over ? "overtime" : `left of ${clock(session.session_seconds)}`}
-      </span>
-    </div>
-  );
+  return session.seconds_left - Math.max(0, (now - syncedAt) / 1000);
 }
 
 function SubmitControl(props: {
@@ -48,22 +33,19 @@ function SubmitControl(props: {
   if (!confirming) {
     return (
       <Button
-        className="min-h-12 px-5 text-base font-semibold"
+        className="group min-h-12"
         disabled={props.blocker !== null}
         title={props.blocker ?? undefined}
         onClick={() => setConfirming(true)}
       >
-        Submit report →
+        Submit report
+        <ArrowRight className="size-[18px] transition-transform duration-200 group-hover:translate-x-1" />
       </Button>
     );
   }
   return (
-    <div className="flex items-center gap-2" role="group" aria-label="Confirm submit">
-      <Button
-        className="min-h-12 px-5 text-base font-semibold"
-        disabled={props.pending}
-        onClick={props.onSubmit}
-      >
+    <div className="fade flex items-center gap-2" role="group" aria-label="Confirm submit">
+      <Button tone="green" className="min-h-12" disabled={props.pending} onClick={props.onSubmit}>
         {props.pending
           ? "Submitting…"
           : `Submit ${props.count === 0 ? "with no findings" : plural(props.count, "finding")}`}
@@ -88,7 +70,13 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
   const [range, setRange] = useState<LineRange | null>(null);
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const [reveal, setReveal] = useState<{ line: number; nonce: number } | null>(null);
+  const [reportOpen, setReportOpen] = useState(draft.findings.length > 0);
   const questionRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const left = useSecondsLeft(session, syncedAt);
+  const over = left <= 0;
+  const low = !over && left <= 300;
+  const elapsedShare = Math.min(1, Math.max(0, 1 - left / session.session_seconds));
 
   const active = session.files.find((f) => f.path === activePath) ?? session.files[0];
   const lineCounts = useMemo(() => {
@@ -101,6 +89,8 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
   }, [session.files]);
   const totalLines = Object.values(lineCounts).reduce((a, b) => a + b, 0);
 
+  const flagsByFile: Record<string, number> = {};
+  for (const f of draft.findings) flagsByFile[f.file] = (flagsByFile[f.file] ?? 0) + 1;
   const flagged = draft.findings
     .filter((f) => f.file === active?.path)
     .map((f) => ({ from: f.line_from, to: f.line_to }));
@@ -143,39 +133,60 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
     setReveal({ line: f.line_from, nonce: Date.now() });
   };
   const flag = () => {
-    if (selection) setFocusKey(addFinding(id, selection.file, selection.from, selection.to));
+    if (!selection) return;
+    setFocusKey(addFinding(id, selection.file, selection.from, selection.to));
+    setReportOpen(true);
   };
 
   if (!active) return <Notice tone="coral">This problem has no files.</Notice>;
+  const rule = "flex items-start gap-2.5";
 
   return (
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)]">
-      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-line bg-panel px-6 py-3">
-        <div className="flex min-w-0 items-center gap-6">
-          <Link to="/" className="flex min-h-11 items-center text-mute hover:text-ink">
-            ← Library
+      <header className="topbar relative flex flex-wrap items-center justify-between gap-x-5 gap-y-2 px-5 py-2.5">
+        <div className="flex min-w-0 items-center gap-4">
+          <Link
+            to="/"
+            className="flex min-h-11 items-center gap-1.5 rounded-xl px-2.5 text-mute transition hover:bg-white/5 hover:text-ink"
+          >
+            <ArrowLeft className="size-4" />
+            Library
           </Link>
           <div className="min-w-0">
-            <p className="text-[12px] tracking-widest text-mute uppercase">
-              Problem {session.problem_id} · Python · Unfamiliar codebase
-            </p>
-            <h1 className="truncate text-lg font-semibold">
+            <p className="eyebrow">Problem {session.problem_id} · Python · Unfamiliar codebase</p>
+            <h1 className="flex items-baseline gap-3 truncate text-lg leading-snug font-semibold">
               {problemTitle(
                 session.origin_repo,
                 session.files.map((f) => f.path),
               )}
+              <span className="text-[12.5px] font-normal text-mute">
+                {plural(session.files.length, "file")} · {totalLines} lines
+              </span>
             </h1>
-            <p className="text-[13px] text-mute">
-              {plural(session.files.length, "file")} · {totalLines} lines
-            </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-5">
-          <Timer session={session} syncedAt={syncedAt} />
+        <div className="flex flex-wrap items-center gap-4">
+          <div
+            role="timer"
+            aria-label={over ? "Time is up" : `Time left: ${clock(left)}`}
+            className="flex items-baseline gap-2.5"
+          >
+            <span
+              className={`font-mono text-[1.9rem] leading-none font-medium tabular-nums transition-colors duration-500 ${
+                over || low ? "text-coral" : "text-amber"
+              } ${over ? "" : "drop-shadow-[0_0_14px_rgb(242_178_74/0.35)]"}`}
+            >
+              {clock(left)}
+            </span>
+            <span className={`text-[12.5px] ${over ? "text-coral" : "text-mute"}`}>
+              {over ? "overtime" : `left of ${clock(session.session_seconds)}`}
+            </span>
+          </div>
           <Segmented
             label="Assistant mode for this session"
             value={session.mode}
             tone={constrained ? "cyan" : "amber"}
+            compact
             options={[
               { value: "constrained", label: "Constrained · local" },
               { value: "realistic", label: "Realistic · Gemini" },
@@ -189,80 +200,116 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
           />
         </div>
         {(blocker || submit.isError) && (
-          <p className="w-full text-right text-[13px] text-amber" role="status">
+          <p className="fade w-full text-right text-[12.5px] text-amber" role="status">
             {submit.isError ? errorText(submit.error) : `Before you submit: ${blocker}.`}
           </p>
         )}
+        {/* Elapsed time as a line along the bottom edge of the bar. */}
+        <span className="absolute inset-x-0 -bottom-px h-0.5 bg-white/[0.04]" aria-hidden="true">
+          <span
+            className={`block h-full transition-[width] duration-1000 ease-linear ${
+              over || low
+                ? "bg-coral shadow-[0_0_10px_rgb(255_122_107/0.8)]"
+                : "bg-amber shadow-[0_0_10px_rgb(242_178_74/0.7)]"
+            }`}
+            style={{ width: `${elapsedShare * 100}%` }}
+          />
+        </span>
       </header>
 
-      <div className="grid min-h-0 grid-cols-[15rem_minmax(0,1fr)_25rem]">
-        <nav aria-label="Files" className="min-h-0 overflow-y-auto border-r border-line bg-panel p-3.5">
-          <h2 className="px-3 pt-3 pb-2 text-[12px] tracking-widest text-mute uppercase">Files</h2>
-          <ul className="flex flex-col gap-1.5">
-            {session.files.map((f) => {
-              const current = f.path === active.path;
-              return (
-                <li key={f.path}>
-                  <button
-                    type="button"
-                    aria-current={current ? "true" : undefined}
-                    onClick={() => open(f.path)}
-                    title={f.path}
-                    className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-3 text-left font-mono text-[13px] ${
-                      current ? "bg-raised text-ink" : "text-mute hover:bg-raised/60 hover:text-ink"
-                    }`}
-                  >
-                    <span className="truncate">{baseName(f.path)}</span>
-                    <span className="text-mute">{lineCounts[f.path]}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <section className="mt-4 rounded-lg bg-raised px-3.5 py-4 text-[13px] leading-relaxed text-mute">
-            <h2 className="mb-2 text-[12px] tracking-widest uppercase">Session rules</h2>
-            {constrained ? (
-              <>
-                <p>
-                  The assistant sees only the lines you select. Window:{" "}
-                  {session.ctx_cap.toLocaleString()} tokens.
-                </p>
-                <p className="mt-2">{session.q_budget} questions per session.</p>
-              </>
-            ) : (
-              <>
-                <p>The assistant sees the whole file you are in.</p>
-                <p className="mt-2">No question limit.</p>
-              </>
-            )}
-            <p className="mt-2">No test runner. Read, reason, report.</p>
+      <div className="grid min-h-0 grid-cols-[13.5rem_minmax(0,1fr)_23.5rem]">
+        <nav
+          aria-label="Files"
+          className="flex min-h-0 flex-col gap-4 overflow-y-auto border-r border-line bg-panel/70 p-3"
+        >
+          <div>
+            <h2 className="eyebrow px-2 pt-2 pb-2">Files</h2>
+            <ul className="flex flex-col gap-1">
+              {session.files.map((f) => {
+                const current = f.path === active.path;
+                const flags = flagsByFile[f.path] ?? 0;
+                return (
+                  <li key={f.path}>
+                    <button
+                      type="button"
+                      aria-current={current ? "true" : undefined}
+                      onClick={() => open(f.path)}
+                      title={f.path}
+                      className={`relative flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 text-left font-mono text-[12.5px] transition ${
+                        current
+                          ? "bg-white/[0.07] text-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]"
+                          : "text-mute hover:bg-white/[0.04] hover:text-ink"
+                      }`}
+                    >
+                      {current && (
+                        <span className="absolute top-2.5 bottom-2.5 left-0 w-0.5 rounded-full bg-cyan" />
+                      )}
+                      <FileCode className={`size-4 shrink-0 ${current ? "text-cyan" : ""}`} />
+                      <span className="min-w-0 flex-1 truncate">{baseName(f.path)}</span>
+                      {flags > 0 && (
+                        <span className="rounded-full bg-coral/15 px-1.5 py-0.5 text-[11px] leading-none text-coral">
+                          {flags}
+                        </span>
+                      )}
+                      <span className="text-[11.5px] text-mute/80">{lineCounts[f.path]}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <section className="rounded-2xl border border-white/[0.05] bg-white/[0.03] px-3.5 py-3.5 text-[12.5px] leading-relaxed text-mute">
+            <h2 className="eyebrow mb-2.5">Session rules</h2>
+            <ul className="flex flex-col gap-2.5">
+              <li className={rule}>
+                <Eye className="mt-0.5 size-4 shrink-0 text-cyan" />
+                {constrained
+                  ? `The assistant sees only the lines you select. Window: ${session.ctx_cap.toLocaleString()} tokens.`
+                  : "The assistant sees the whole file you are in."}
+              </li>
+              <li className={rule}>
+                <Target className="mt-0.5 size-4 shrink-0 text-amber" />
+                {constrained ? `${session.q_budget} questions per session.` : "No question limit."}
+              </li>
+              <li className={rule}>
+                <Flag className="mt-0.5 size-4 shrink-0 text-coral" />
+                No test runner. Read, reason, report.
+              </li>
+            </ul>
           </section>
         </nav>
 
-        <div className="grid min-h-0 grid-rows-[auto_minmax(0,3fr)_minmax(0,2fr)]">
-          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-line bg-panel px-6 py-2">
-            <p className="flex items-baseline gap-4" title={active.path}>
-              <span className="font-mono">{baseName(active.path)}</span>
-              <span className="text-[13px] text-mute">{lineCounts[active.path]} lines</span>
+        <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]">
+          <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-line bg-panel/60 px-5 py-1.5">
+            <p className="flex min-w-0 items-baseline gap-3" title={active.path}>
+              <span className="truncate font-mono text-[13px]">{active.path}</span>
+              <span className="shrink-0 text-[12.5px] text-mute">
+                {lineCounts[active.path]} lines
+              </span>
             </p>
             {selection ? (
-              <p className="flex items-center gap-3">
-                <span className="font-mono text-[13px]">
-                  {lref(selection.from, selection.to)} selected
+              <p key="actions" className="fade flex items-center gap-2">
+                <span className="mr-1 rounded-full bg-cyan/10 px-2.5 py-1 font-mono text-[12.5px] text-cyan">
+                  {lref(selection.from, selection.to)}
                 </span>
-                <Button compact variant="outline" onClick={() => questionRef.current?.focus()}>
+                <Button
+                  compact
+                  variant="outline"
+                  tone={constrained ? "cyan" : "amber"}
+                  onClick={() => questionRef.current?.focus()}
+                >
+                  <Chat className="size-4" />
                   Ask assistant
                 </Button>
                 <Button compact variant="outline" tone="coral" onClick={flag}>
+                  <Flag className="size-4" />
                   Flag as bug
                 </Button>
               </p>
             ) : (
-              <p className="text-[13px] text-mute">
+              <p key="hint" className="fade text-[12.5px] text-mute">
                 Click a line number, then another, to select a range.{" "}
-                {constrained
-                  ? "The assistant sees only what you send it."
-                  : "Then ask about it or flag it as a bug."}
+                {constrained ? "The assistant sees only what you send it." : ""}
               </p>
             )}
           </div>
@@ -275,7 +322,13 @@ function Workspace({ session, syncedAt }: { session: SessionView; syncedAt: numb
               reveal={reveal}
             />
           </div>
-          <ReportForm sessionId={id} focusKey={focusKey} onJump={jump} />
+          <ReportForm
+            sessionId={id}
+            open={reportOpen}
+            onToggle={() => setReportOpen((v) => !v)}
+            focusKey={focusKey}
+            onJump={jump}
+          />
         </div>
 
         <AssistantPanel
@@ -302,7 +355,7 @@ export default function Session({ id }: { id: string }) {
 
   if (session.isError) {
     return (
-      <div className="p-6">
+      <div className="mx-auto max-w-xl p-8">
         <Notice tone="coral">{errorText(session.error)}</Notice>
       </div>
     );

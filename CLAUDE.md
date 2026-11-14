@@ -145,7 +145,7 @@ cd web && pnpm typecheck && pnpm lint
 cd web && pnpm gen:api
 ```
 
-Smart App Control is on for this machine and blocks the unsigned `uvicorn.exe` and `mypy.exe` launchers that uv generates, so run those two as modules (`python -m ...`) as shown above. It also blocks Tailwind 4's native class scanner, which is why the web app uses Tailwind 3 (pure JavaScript). TypeScript stays on 6 until `typescript-eslint` and `openapi-typescript` support 7. Run `pnpm` from PowerShell: its shim does not work in Git Bash. Since 11 Nov 2026 it also blocks `.venv\Scripts\python.exe` (uv's unsigned launcher) at times, which breaks every `uv run` command; `scripts\py.cmd <args>` runs uv's base interpreter (which is allowed) with the venv's packages instead. Never change or disable Smart App Control to make something work: say what is blocked and use an allowed route or ask.
+Smart App Control is on for this machine and blocks the unsigned `uvicorn.exe` and `mypy.exe` launchers that uv generates, so run those two as modules (`python -m ...`) as shown above. It also blocks Tailwind 4's native class scanner, which is why the web app uses Tailwind 3 (pure JavaScript). TypeScript stays on 6 until `typescript-eslint` and `openapi-typescript` support 7. Run `pnpm` from PowerShell: its shim does not work in Git Bash. Since 11 Nov 2026 it also blocks `.venv\Scripts\python.exe` (uv's unsigned launcher) at times, which breaks every `uv run` command; `scripts\py.cmd <args>` runs uv's base interpreter (which is allowed) with the venv's packages instead. Since 14 Nov 2026 it also blocks mypy's compiled module, so mypy cannot run on this machine; CI runs it on every PR, so rely on that and say so. Never change or disable Smart App Control to make something work: say what is blocked and use an allowed route or ask.
 
 Before calling a task done, run `ruff`, `mypy` and `pytest` (plus web `typecheck` if you touched `web/`), and report the results.
 
@@ -292,6 +292,9 @@ Where the app differs from the boards, and why:
 - **Flagging:** the board does not show how a finding is added. Selecting lines shows "Ask assistant" and "Flag as bug" in the file header.
 - **One text per finding:** as on the board, a finding has one field, "Why it is a bug, and the fix". It is sent as `explanation` with an empty `fix`, and the judge prompt (`judge-finding-v2`) scores the fix from that text.
 - **Debrief:** "Not in the answer key" has no mark-valid control yet; ungraded items get a "Grade again" bar; the problem's origin is a footer line.
+- **Visual polish (14 Nov 2026):** the owner found the first board-matched build clanky and boring. The layout and palette are unchanged, but panels now have depth (`.surface` in `index.css`), controls have gradients, glow and motion, there are inline SVG icons (`components/icons.tsx`, no icon dependency), skeletons replace "Loading…" text, and animations respect `prefers-reduced-motion`. Keep new UI in this style.
+- **Report draft is a drawer:** the owner's viewport is about 1536 x 740, so the report draft under the code collapses to a bar and opens when a finding is flagged. The code keeps the space.
+- **Card order mixes projects:** within equally ranked cards, projects alternate, so the list does not open with twenty files from one repo.
 - The dev proxy target can be changed with `SCHOLIA_API` (for example a second API on a scratch database).
 
 ---

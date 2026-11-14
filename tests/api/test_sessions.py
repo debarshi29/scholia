@@ -9,7 +9,14 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 import api.sessions
 from api.db import CategoryStatRow, FindingRow, ProblemRow, SessionRow
-from api.sessions import EXPLORATION_FLOOR, miss_rates, pick_problem, problem_weight
+from api.sessions import (
+    EXPLORATION_FLOOR,
+    ProblemCard,
+    miss_rates,
+    mix_projects,
+    pick_problem,
+    problem_weight,
+)
 from schema import BugCategory, Source
 from tests.api.conftest import Lab
 
@@ -300,3 +307,36 @@ def test_picker_skips_attempted_until_none_left() -> None:
     assert all(pick_problem(problems, {"P-0001"}, {}, rng) is problems[1] for _ in range(50))
     assert pick_problem(problems, {"P-0001", "P-0002"}, {}, rng) in problems
     assert pick_problem([], set(), {}, rng) is None
+
+
+def _card(pid: str, repo: str) -> ProblemCard:
+    return ProblemCard(
+        id=pid,
+        version=1,
+        tier=0,
+        source=Source.SWEBENCH,
+        origin_repo=repo,
+        licence="MIT",
+        files=["a.py"],
+        lines=200,
+        attempts=0,
+        last_attempt_at=None,
+        best_found=None,
+        best_bugs=None,
+        best_seconds=None,
+    )
+
+
+def test_mix_projects_interleaves_only_within_equal_rank() -> None:
+    cards = [
+        _card("P-1", "a/a"),
+        _card("P-2", "a/a"),
+        _card("P-3", "b/b"),
+        _card("P-4", "a/a"),
+        _card("P-5", "c/c"),
+        _card("P-6", "c/c"),
+    ]
+    top, rest = (False, 0.9), (False, 0.1)
+    order = [c.id for c in mix_projects(cards, [top, top, top, rest, rest, rest])]
+    assert order == ["P-1", "P-3", "P-2", "P-4", "P-5", "P-6"]
+    assert mix_projects([], []) == []
