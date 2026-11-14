@@ -265,9 +265,9 @@ class Grader:
                 )
                 if bug.file.endswith(".py"):
                     fix.syntax_error = python_syntax_error(patch.content)
-                score = await judge.score_patch(bug, patch.diff)
-                if score is not None:
-                    fix.judge_fix, fix.judge_notes = score.fix, score.notes
+                fixed = await judge.score_patch(bug, patch.diff)
+                if fixed is not None:
+                    fix.judge_fix, fix.judge_notes = fixed.fix, fixed.notes
                 if fix.on_target:
                     fixed_on_target.add(bug.id)
             db.add(fix)
