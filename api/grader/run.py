@@ -13,8 +13,18 @@ from sqlmodel import col, delete, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from api.config import Settings
-from api.db import ClaimAuditRow, FindingRow, OutcomeRow, QueryRow, SessionRow, utcnow
+from api.db import (
+    ClaimAuditRow,
+    FindingRow,
+    FixResultRow,
+    OutcomeRow,
+    PatchRow,
+    QueryRow,
+    SessionRow,
+    utcnow,
+)
 from api.grader.audit import BugResult, QueryScope, is_assisted, label_claim, relied_on
+from api.grader.fix import changed_ranges, python_syntax_error, touches_bug
 from api.grader.judge import Judge
 from api.grader.match import BugSpan, FindingSpan, Span, match
 from api.problems import ProblemStore
@@ -135,6 +145,7 @@ class Grader:
 
         # A regrade replaces earlier results.
         await db.exec(delete(OutcomeRow).where(col(OutcomeRow.session_id) == session_id))
+        await db.exec(delete(FixResultRow).where(col(FixResultRow.session_id) == session_id))
         if query_ids:
             await db.exec(delete(ClaimAuditRow).where(col(ClaimAuditRow.query_id).in_(query_ids)))
 
@@ -228,8 +239,54 @@ class Grader:
                 )
             )
 
-        # 5. Tracker, then mark the session graded.
-        await apply_session(db, session, [(r.bug.category, r.status) for r in results])
+        # 5. The code fix, if one was submitted: location and syntax are checked here,
+        #    the judge scores whether it repairs the bug.
+        patches = {
+            p.file: p
+            for p in (
+                await db.exec(select(PatchRow).where(PatchRow.session_id == session_id))
+            ).all()
+        }
+        fixed_on_target: set[str] = set()
+        for bug in answer.bugs:
+            patch = patches.get(bug.file)
+            fix = FixResultRow(
+                session_id=session_id,
+                bug_id=bug.id,
+                submitted=patch is not None,
+                prompt_version=self.judge.patch_prompt.version,
+            )
+            if patch is not None:
+                original = await self.store.read_src(pid, version, bug.file)
+                fix.on_target = touches_bug(
+                    changed_ranges(original, patch.content),
+                    bug,
+                    self.settings.match_tolerance_lines,
+                )
+                if bug.file.endswith(".py"):
+                    fix.syntax_error = python_syntax_error(patch.content)
+                fixed = await judge.score_patch(bug, patch.diff)
+                if fixed is not None:
+                    fix.judge_fix, fix.judge_notes = fixed.fix, fixed.notes
+                if fix.on_target:
+                    fixed_on_target.add(bug.id)
+            db.add(fix)
+
+        # 6. Tracker, then mark the session graded. A bug whose lines the user fixed was
+        #    located, even with no finding flagged, so it does not count as a miss.
+        await apply_session(
+            db,
+            session,
+            [
+                (
+                    r.bug.category,
+                    OutcomeStatus.UNGRADED
+                    if r.status is OutcomeStatus.MISSED and r.bug.id in fixed_on_target
+                    else r.status,
+                )
+                for r in results
+            ],
+        )
         session.graded_at = utcnow()
         session.grade_error = None
         db.add(session)

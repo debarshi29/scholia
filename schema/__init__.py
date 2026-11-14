@@ -3,7 +3,7 @@
 from schema.answer import AnswerKey, Bug, CategorySource, DesignNote, Severity
 from schema.grading import ClaimVerdict, OutcomeStatus
 from schema.problem import ProblemMeta, Source
-from schema.report import Finding, Report
+from schema.report import FilePatch, Finding, Report
 from schema.session import AssistantMode
 from schema.taxonomy import BugCategory
 
@@ -15,6 +15,7 @@ __all__ = [
     "CategorySource",
     "ClaimVerdict",
     "DesignNote",
+    "FilePatch",
     "Finding",
     "OutcomeStatus",
     "ProblemMeta",

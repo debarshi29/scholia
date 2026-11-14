@@ -17,9 +17,11 @@ export interface DraftFinding {
 export interface Draft {
   findings: DraftFinding[];
   designNotes: string;
+  /** Edited copies of files (the user's fix), by path. Absent = untouched. */
+  edits: Record<string, string>;
 }
 
-const EMPTY: Draft = { findings: [], designNotes: "" };
+const EMPTY: Draft = { findings: [], designNotes: "", edits: {} };
 
 interface DraftState {
   drafts: Record<string, Draft>;
@@ -27,6 +29,7 @@ interface DraftState {
   updateFinding: (sessionId: string, key: string, patch: Partial<DraftFinding>) => void;
   removeFinding: (sessionId: string, key: string) => void;
   setDesignNotes: (sessionId: string, notes: string) => void;
+  setEdit: (sessionId: string, file: string, content: string | null) => void;
   clear: (sessionId: string) => void;
 }
 
@@ -65,6 +68,15 @@ export const useDraftStore = create<DraftState>()(
         ),
       setDesignNotes: (sessionId, notes) =>
         set((s) => edit(s, sessionId, (d) => ({ ...d, designNotes: notes }))),
+      setEdit: (sessionId, file, content) =>
+        set((s) =>
+          edit(s, sessionId, (d) => {
+            const edits = { ...(d.edits ?? {}) };
+            if (content === null) delete edits[file];
+            else edits[file] = content;
+            return { ...d, edits };
+          }),
+        ),
       clear: (sessionId) =>
         set((s) => {
           const drafts = { ...s.drafts };

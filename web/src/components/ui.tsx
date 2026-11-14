@@ -153,14 +153,16 @@ export function Segmented<T extends string>(props: {
   value: T;
   options: [Option<T>, Option<T>];
   onChange?: (value: T) => void;
-  tone?: "cyan" | "amber";
+  tone?: "cyan" | "amber" | "green";
   compact?: boolean;
 }) {
   const index = props.options.findIndex((o) => o.value === props.value);
   const thumb =
     props.tone === "amber"
       ? "from-[#f7c56d] to-[#eda636] shadow-[0_8px_20px_-8px_rgb(242_178_74/0.8)]"
-      : "from-[#74d6f2] to-[#49b9dc] shadow-[0_8px_20px_-8px_rgb(92_200_232/0.8)]";
+      : props.tone === "green"
+        ? "from-[#8fe0a6] to-[#52bd75] shadow-[0_8px_20px_-8px_rgb(111_208_140/0.8)]"
+        : "from-[#74d6f2] to-[#49b9dc] shadow-[0_8px_20px_-8px_rgb(92_200_232/0.8)]";
   return (
     <div
       role="radiogroup"

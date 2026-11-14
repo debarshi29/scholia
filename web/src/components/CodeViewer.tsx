@@ -14,6 +14,8 @@ interface Props {
   /** Unique per file, so Monaco keeps a scroll position and selection for each one. */
   modelPath: string;
   content: string;
+  /** When set, the editor is writable and every change is reported here. */
+  onEdit?: (content: string) => void;
   flagged: LineRange[];
   onSelect?: (range: LineRange | null) => void;
   /** Bump `nonce` to scroll to `line` again. */
@@ -23,16 +25,19 @@ interface Props {
 type Collection = monaco.editor.IEditorDecorationsCollection;
 
 export default function CodeViewer(props: Props) {
-  const { modelPath, content, flagged, onSelect, reveal } = props;
+  const { modelPath, content, flagged, onSelect, onEdit, reveal } = props;
+  const editable = onEdit !== undefined;
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const decorations = useRef<Collection | null>(null);
   const anchor = useRef<number | null>(null);
   const onSelectRef = useRef(onSelect);
+  const onEditRef = useRef(onEdit);
   const revealRef = useRef(reveal);
   useEffect(() => {
     onSelectRef.current = onSelect;
+    onEditRef.current = onEdit;
     revealRef.current = reveal;
-  }, [onSelect, reveal]);
+  }, [onSelect, onEdit, reveal]);
 
   const paint = () => {
     const editor = editorRef.current;
@@ -71,6 +76,7 @@ export default function CodeViewer(props: Props) {
     const editor = mounted as unknown as monaco.editor.IStandaloneCodeEditor;
     editorRef.current = editor;
     editor.onDidChangeCursorSelection(report);
+    editor.onDidChangeModelContent(() => onEditRef.current?.(editor.getValue()));
     editor.onDidChangeModel(() => {
       anchor.current = null;
       paint();
@@ -118,8 +124,8 @@ export default function CodeViewer(props: Props) {
       onMount={onMount}
       loading={<p className="p-4 text-mute">Loading the editor…</p>}
       options={{
-        readOnly: true,
-        domReadOnly: true,
+        readOnly: !editable,
+        domReadOnly: !editable,
         minimap: { enabled: false },
         fontFamily: '"IBM Plex Mono", ui-monospace, Consolas, monospace',
         fontSize: 13.5,
@@ -145,7 +151,7 @@ export default function CodeViewer(props: Props) {
         scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10, useShadows: false },
         overviewRulerBorder: false,
         hideCursorInOverviewRuler: true,
-        ariaLabel: `Source code, read only: ${modelPath}`,
+        ariaLabel: `Source code, ${editable ? "editable" : "read only"}: ${modelPath}`,
       }}
     />
   );

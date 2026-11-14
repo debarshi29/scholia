@@ -243,7 +243,7 @@ Tier 0 conversions always have a single bug. `category` is assigned by a Gemini 
 - `GET /api/sessions/{id}`: files (src only), settings, time left, questions used.
 - `POST /api/sessions/{id}/ask` `{file, line_from, line_to, question}`: goes to the proxy.
 - `POST /api/sessions/{id}/measure` `{file, line_from, line_to, question?}`: token cost of a selection for the context bar. It reaches no model, costs no budget and is not logged as an exchange.
-- `POST /api/sessions/{id}/submit` `{findings, design_notes}`: freezes the report and runs grading in a background task.
+- `POST /api/sessions/{id}/submit` `{findings, design_notes, patches?}`: freezes the report and runs grading in a background task.
 - `GET /api/sessions/{id}/debrief`: returns 409 until submitted and graded (`not_submitted`, `grading_pending` or `grading_failed`). `POST /api/sessions/{id}/regrade` grades a submitted session again, for example after the judge was unreachable.
 - **Picker:** weight each unattempted problem by the sum of the user's miss rates over its categories, plus an exploration floor of 0.1 so unseen categories still come up. Once every problem has been attempted, all problems are eligible again.
 - The `problems` index table is rebuilt from `problems/` on every API start; the folder is the source of truth.
@@ -289,6 +289,7 @@ Where the app differs from the boards, and why:
 - **Brand:** the boards say `readcode`; the app says `scholia`.
 - **Problem titles:** problems have ids, not names, so a title is derived as `<repo>: <file stem>` (`django: deletion`).
 - **Home screen (14 Nov 2026, owner's request):** a Spotlight row shows three random problems (not-attempted ones first) and reshuffles every 12 seconds, pausing while hovered or focused. Below it, every problem is a compact tile, grouped by bug category (weakest category first) with a switch to group by project instead, which does not name the kind of bug. The big cards from the boards are gone: the owner found them ugly.
+- **Fixing the code (14 Nov 2026, owner's request):** the Session bar has a Read / Fix switch. In Fix mode the editor is writable; edited files are kept in the draft (`edits`) and sent on submit as `patches` (`{file, content}`, one per file; an unchanged file is dropped server-side). Grading adds, per key bug: whether the edit changed the bug's lines (`on_target`, same tolerance as matching), a Python syntax check, and a judge score (`judge-patch-v1`) for the diff against the reference fix; results live in `fix_results`, the diffs in `patches`. A bug whose lines were fixed counts as located, not missed, in the category stats. Line numbers of findings refer to the original file, so edits that add or remove lines shift the editor against them; "Reset file" restores the original. The debrief shows "Your fix" as a diff. Running tests on the fix is not built (no Docker verifier in v1).
 - **Git diff on the debrief:** "The fix" card shows the upstream diff with old and new line numbers (`components/DiffView.tsx`). It is never shown during a session.
 - **Sources:** the filter pills are All / SWE-bench Lite / BugsInPy (the boards' Mined and Mutated tiers are M6).
 - **Mode switch on the Session bar:** it shows the session's mode and cannot be changed mid-session, because the mode is fixed when the session starts.
