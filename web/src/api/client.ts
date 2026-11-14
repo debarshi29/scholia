@@ -1,5 +1,6 @@
 // Typed client for the FastAPI app. The types come from `pnpm gen:api`.
 // The browser never talks to Ollama or Gemini: every model call goes through /api.
+import { DEFAULT_PROFILE, useProfileStore } from "../store/profile";
 import type { components } from "./schema";
 
 type S = components["schemas"];
@@ -30,6 +31,9 @@ export type RefusalReason = S["RefusalReason"];
 export type OutcomeStatus = S["OutcomeStatus"];
 export type ClaimVerdict = S["ClaimVerdict"];
 export type Source = S["Source"];
+export type Profile = S["ProfileView"];
+export type ProfileCreate = S["ProfileCreate"];
+export type ProfileUpdate = S["ProfileUpdate"];
 
 /** An error in the API's envelope: `{"error": {"code", "message"}}`. */
 export class ApiError extends Error {
@@ -48,7 +52,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   try {
     resp = await fetch(path, {
       method,
-      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      headers: {
+        "X-Profile": useProfileStore.getState().id,
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
@@ -63,6 +70,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   if (!resp.ok) {
     const err = (data as { error?: { code?: string; message?: string } } | null)?.error;
+    if (err?.code === "profile_not_found" && useProfileStore.getState().id !== DEFAULT_PROFILE) {
+      // The profile was deleted (maybe in another tab): fall back to the default one.
+      useProfileStore.getState().setProfile(DEFAULT_PROFILE);
+      window.location.assign("/");
+    }
     throw new ApiError(
       resp.status,
       err?.code ?? "http_error",
@@ -87,5 +99,13 @@ export const api = {
   submit: (id: string, body: Report) =>
     request<SubmitResult>("POST", `${session(id)}/submit`, body),
   debrief: (id: string) => request<Debrief>("GET", `${session(id)}/debrief`),
+  profiles: () => request<Profile[]>("GET", "/api/profiles"),
+  createProfile: (body: ProfileCreate) => request<Profile>("POST", "/api/profiles", body),
+  updateProfile: (id: string, body: ProfileUpdate) =>
+    request<Profile>("PATCH", `/api/profiles/${encodeURIComponent(id)}`, body),
+  resetProfileStats: (id: string) =>
+    request<Profile>("POST", `/api/profiles/${encodeURIComponent(id)}/reset-stats`),
+  deleteProfile: (id: string) =>
+    request<null>("DELETE", `/api/profiles/${encodeURIComponent(id)}`),
   regrade: (id: string) => request<{ status: string }>("POST", `${session(id)}/regrade`),
 };

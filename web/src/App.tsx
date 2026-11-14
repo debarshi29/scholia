@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import { Loading } from "./components/ui";
 import Library from "./pages/Library";
+import Profiles from "./pages/Profiles";
 import { Link, parseRoute, usePath } from "./router";
 
 // Monaco is large; it loads only with the page that shows code.
@@ -23,6 +24,12 @@ export default function App() {
       return (
         <Page>
           <Library />
+        </Page>
+      );
+    case "profiles":
+      return (
+        <Page>
+          <Profiles />
         </Page>
       );
     case "session":

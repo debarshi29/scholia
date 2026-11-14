@@ -4,6 +4,66 @@
  */
 
 export interface paths {
+    "/api/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Profiles */
+        get: operations["list_profiles_api_profiles_get"];
+        put?: never;
+        /** Create Profile */
+        post: operations["create_profile_api_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Profile */
+        get: operations["get_profile_api_profiles__profile_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Profile
+         * @description Delete a profile with its sessions, assistant logs, reports and stats.
+         */
+        delete: operations["delete_profile_api_profiles__profile_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Profile */
+        patch: operations["update_profile_api_profiles__profile_id__patch"];
+        trace?: never;
+    };
+    "/api/profiles/{profile_id}/reset-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Stats
+         * @description Forget the weak-spot counts, so the picker starts fresh. Sessions are kept.
+         */
+        post: operations["reset_stats_api_profiles__profile_id__reset_stats_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/problems": {
         parameters: {
             query?: never;
@@ -481,6 +541,7 @@ export interface components {
         };
         /** LibrarySettings */
         LibrarySettings: {
+            default_mode: components["schemas"]["AssistantMode"];
             /** Default Ctx Cap */
             default_ctx_cap: number;
             /** Default Q Budget */
@@ -567,6 +628,56 @@ export interface components {
             /** Best Seconds */
             best_seconds: number | null;
         };
+        /** ProfileCreate */
+        ProfileCreate: {
+            /** Name */
+            name: string;
+            default_mode?: components["schemas"]["AssistantMode"] | null;
+            /** Default Ctx Cap */
+            default_ctx_cap?: number | null;
+            /** Default Q Budget */
+            default_q_budget?: number | null;
+        };
+        /**
+         * ProfileUpdate
+         * @description Only the fields that are sent change; send ``null`` to go back to the server default.
+         */
+        ProfileUpdate: {
+            /** Name */
+            name?: string | null;
+            default_mode?: components["schemas"]["AssistantMode"] | null;
+            /** Default Ctx Cap */
+            default_ctx_cap?: number | null;
+            /** Default Q Budget */
+            default_q_budget?: number | null;
+        };
+        /** ProfileView */
+        ProfileView: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Is Default */
+            is_default: boolean;
+            default_mode: components["schemas"]["AssistantMode"] | null;
+            /** Default Ctx Cap */
+            default_ctx_cap: number | null;
+            /** Default Q Budget */
+            default_q_budget: number | null;
+            /** Sessions */
+            sessions: number;
+            /** Graded */
+            graded: number;
+            /** Attempts */
+            attempts: number;
+            /** Misses */
+            misses: number;
+        };
         /**
          * RefusalReason
          * @enum {string}
@@ -589,8 +700,7 @@ export interface components {
             /** Problem Id */
             problem_id?: string | null;
             source?: components["schemas"]["Source"] | null;
-            /** @default constrained */
-            mode: components["schemas"]["AssistantMode"];
+            mode?: components["schemas"]["AssistantMode"] | null;
             /** Ctx Cap */
             ctx_cap?: number | null;
             /** Q Budget */
@@ -752,10 +862,191 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    list_problems_api_problems_get: {
+    list_profiles_api_profiles_get: {
         parameters: {
             query?: never;
             header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileView"][];
+                };
+            };
+        };
+    };
+    create_profile_api_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_profile_api_profiles__profile_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_profile_api_profiles__profile_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_profile_api_profiles__profile_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_stats_api_profiles__profile_id__reset_stats_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_problems_api_problems_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-profile"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -770,12 +1061,23 @@ export interface operations {
                     "application/json": components["schemas"]["ProblemCard"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     category_stats_api_stats_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-profile"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -790,12 +1092,23 @@ export interface operations {
                     "application/json": components["schemas"]["CategoryStat"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     library_settings_api_settings_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-profile"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -810,12 +1123,23 @@ export interface operations {
                     "application/json": components["schemas"]["LibrarySettings"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     list_sessions_api_sessions_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-profile"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -830,12 +1154,23 @@ export interface operations {
                     "application/json": components["schemas"]["SessionSummary"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     create_session_api_sessions_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-profile"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };

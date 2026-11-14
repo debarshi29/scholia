@@ -133,3 +133,14 @@ export function Mark(props: Props) {
     </svg>
   );
 }
+
+export const User = (p: Props) => (
+  <Svg {...p}>
+    <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0" />
+  </Svg>
+);
+export const Plus = (p: Props) => (
+  <Svg {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </Svg>
+);

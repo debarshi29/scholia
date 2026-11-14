@@ -2,6 +2,7 @@
 // compact tile, grouped by bug category or by project, with the session setup panel.
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
+import ProfileMenu from "../components/ProfileMenu";
 import {
   api,
   type AssistantMode,
@@ -71,6 +72,7 @@ function Header({ sessions }: { sessions: SessionSummary[] }) {
             Resume {resume.problem_id}
           </Link>
         )}
+        <ProfileMenu />
         {lastDebrief && (
           <Link
             to={`/debrief/${lastDebrief.id}`}
@@ -419,7 +421,7 @@ function Setup(props: {
   source: SourceFilter;
 }) {
   const { settings, selected, source } = props;
-  const [mode, setMode] = useState<AssistantMode>("constrained");
+  const [mode, setMode] = useState<AssistantMode>(settings.default_mode);
   const [ctxCap, setCtxCap] = useState(settings.default_ctx_cap);
   const [budget, setBudget] = useState(settings.default_q_budget);
   const constrained = mode === "constrained";
@@ -608,6 +610,7 @@ export default function Library() {
     { value: "bugsinpy", label: SOURCE_LABEL.bugsinpy },
     { value: "planted", label: SOURCE_LABEL.planted },
   ];
+  const shownFilters = filters.filter((f) => f.value === "all" || count(f.value) > 0);
   const projects = new Set(all.map((p) => p.origin_repo)).size;
   const attempted = all.filter((p) => p.attempts > 0).length;
   const groups = groupProblems(visible, grouping, stats.data);
@@ -651,7 +654,7 @@ export default function Library() {
               <section className="rise flex flex-col gap-4" style={stagger(3)}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div role="group" aria-label="Source" className="flex flex-wrap items-center gap-2">
-                    {filters.map((f) => {
+                    {shownFilters.map((f) => {
                       const on = source === f.value;
                       return (
                         <button
