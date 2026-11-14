@@ -149,9 +149,17 @@ function BugRow({ bug }: { bug: DebriefBug }) {
           </More>
         )}
       </div>
-      <Chip tone={s.tone} dot>
-        {s.label}
-      </Chip>
+      <div className="flex flex-col items-end gap-1.5">
+        <Chip tone={s.tone} dot>
+          {s.label}
+        </Chip>
+        {bug.fix?.submitted && (
+          <Chip tone={bug.fix.on_target && !bug.fix.syntax_error ? "green" : "amber"} mono>
+            your fix{" "}
+            {bug.fix.judge_fix !== null ? `${bug.fix.judge_fix}/2` : bug.fix.on_target ? "on the bug" : "elsewhere"}
+          </Chip>
+        )}
+      </div>
     </li>
   );
 }
@@ -413,6 +421,34 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
             )}
           </Card>
         </div>
+
+        {d.patches.length > 0 && (
+          <Card
+            index={7}
+            title="Your fix"
+            note="What you changed, as a diff from the code you were given."
+          >
+            <div className="flex flex-col gap-4">
+              {d.bugs.map(
+                (b) =>
+                  b.fix?.submitted && (
+                    <p key={b.id} className="text-[13px] leading-relaxed text-mute">
+                      {b.fix.on_target
+                        ? "Your change touches the lines of the bug."
+                        : "Your change is in the bug's file but not on the bug's lines."}{" "}
+                      {b.fix.syntax_error && (
+                        <span className="text-coral">Syntax error: {b.fix.syntax_error}. </span>
+                      )}
+                      {b.fix.judge_notes}
+                    </p>
+                  ),
+              )}
+              {d.patches.map((p) => (
+                <DiffView key={p.file} diff={p.diff} />
+              ))}
+            </div>
+          </Card>
+        )}
 
         <Card
           index={7}
