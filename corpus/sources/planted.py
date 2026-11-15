@@ -18,16 +18,13 @@ same trust as running its test suite.
 import ast
 import difflib
 import random
-import re
-import subprocess
-import sys
-import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
 from git import Repo
 
+from corpus.doctests import doctest_result
 from corpus.sources.base import Candidate
 from corpus.text import line_count, split_lines
 from schema import Source
@@ -50,9 +47,7 @@ DIRS = (
     "bit_manipulation",
     "matrix",
 )
-TIMEOUT_S = 20
 MIN_PASSING_TESTS = 3
-_RESULT = re.compile(r"(\d+) passed and (\d+) failed")
 
 
 @dataclass(frozen=True)
@@ -130,28 +125,6 @@ def mutations(source: str) -> list[Mutation]:
             a, b = _char(lines[row], node.col_offset), _char(lines[row], node.end_col_offset)
             edit(row, a, b, str(node.value + 1), "boundary")
     return sorted(out.values(), key=lambda m: m.line)
-
-
-def doctest_result(name: str, text: str) -> tuple[int, int] | None:
-    """``(passed, failed)`` of the file's doctests, or ``None`` if they could not run."""
-    with tempfile.TemporaryDirectory(prefix="scholia-planted-") as tmp:
-        (Path(tmp) / name).write_text(text, encoding="utf-8")
-        try:
-            proc = subprocess.run(
-                [sys.executable, "-m", "doctest", "-v", name],
-                cwd=tmp,
-                capture_output=True,
-                text=True,
-                timeout=TIMEOUT_S,
-                check=False,
-            )
-        except subprocess.TimeoutExpired:
-            return None
-    found = _RESULT.findall(proc.stdout)
-    if not found:
-        return None
-    passed, failed = found[-1]
-    return int(passed), int(failed)
 
 
 def fix_patch(path: str, buggy: str, clean: str) -> str:
