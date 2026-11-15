@@ -43,7 +43,16 @@ from corpus.filters import (
     is_test_path,
 )
 from corpus.patch import FilePatch, PatchError, parse_patch
-from corpus.publish import Draft, Published, find_by_upstream, publish, register
+from corpus.publish import (
+    Draft,
+    Published,
+    find_by_upstream,
+    load_meta,
+    problem_ids,
+    publish,
+    register,
+    versions,
+)
 from corpus.repos import CheckoutError, LicenceResolver, RepoCache
 from corpus.sanitise import SanitiseError, sanitise
 from corpus.sources.base import Candidate, CandidateSource
@@ -265,7 +274,20 @@ def run(
     return published
 
 
-def source_for(name: str, data_dir: Path, limit: int = 20) -> CandidateSource:
+def published_planted_files(problems_dir: Path) -> frozenset[str]:
+    """Files of TheAlgorithms/Python that already have a published planted problem."""
+    done: set[str] = set()
+    for pid in problem_ids(problems_dir):
+        for version in versions(problems_dir, pid):
+            meta = load_meta(problems_dir, pid, version)
+            if meta.source == Source.PLANTED:
+                done.add(meta.upstream_id.split("#")[0])
+    return frozenset(done)
+
+
+def source_for(
+    name: str, data_dir: Path, limit: int = 20, problems_dir: Path | None = None
+) -> CandidateSource:
     if name == Source.SWEBENCH:
         from corpus.sources.swebench import SWEBenchLite
 
@@ -278,7 +300,8 @@ def source_for(name: str, data_dir: Path, limit: int = 20) -> CandidateSource:
         from corpus.sources.planted import PlantedBugs
 
         # Each candidate costs two doctest runs, so only as many as can be needed.
-        return PlantedBugs(data_dir / "repos" / "_planted", wanted=limit * 3)
+        done = published_planted_files(problems_dir) if problems_dir else frozenset()
+        return PlantedBugs(data_dir / "repos" / "_planted", wanted=limit * 3, done=done)
     raise SystemExit(f"unknown source: {name}")
 
 
@@ -342,7 +365,7 @@ def main(argv: list[str] | None = None) -> int:
         prompt_version=classifier.prompt_version if classifier else None,
     )
     published = run(
-        source_for(args.source, data_dir, args.limit).candidates(),
+        source_for(args.source, data_dir, args.limit, settings.problems_dir).candidates(),
         build_log=build_log,
         problems_dir=settings.problems_dir,
         repos=repos,
