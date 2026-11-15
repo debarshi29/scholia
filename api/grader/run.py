@@ -7,6 +7,7 @@ down or returns bad output leaves ``ungraded`` scores, never an error or a guess
 
 import asyncio
 import logging
+from pathlib import PurePosixPath
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlmodel import col, delete, select
@@ -30,9 +31,10 @@ from api.grader.match import BugSpan, FindingSpan, Span, match
 from api.problems import ProblemStore
 from api.proxy import numbered
 from api.tracker import apply_session
+from corpus.doctests import doctest_result
 from corpus.filters import is_allowed_licence
 from corpus.publish import load_answer
-from schema import AnswerKey, Bug, Finding, OutcomeStatus
+from schema import AnswerKey, Bug, Finding, OutcomeStatus, Source
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +42,19 @@ CONTEXT_LINES = 10
 NO_REFERENCE = "This problem has no reference design notes, so the notes were not scored."
 NO_NOTES = "No design notes were written."
 NO_SCORE = "The judge returned no valid score, so the notes are ungraded."
+
+
+async def run_doctests(file: str, content: str) -> tuple[str, str]:
+    """Run the submitted file's doctests off the event loop: ``(status, detail)`` with status
+    ``passed``, ``failed`` or ``error`` (could not run, or timed out)."""
+    result = await asyncio.to_thread(doctest_result, PurePosixPath(file).name, content)
+    if result is None:
+        return "error", "The doctests could not be run (import error or timeout)."
+    passed, failed = result
+    detail = f"{passed} passed, {failed} failed"
+    if failed:
+        return "failed", detail
+    return ("passed", detail) if passed else ("error", "The file has no doctests.")
 
 
 class GradingError(RuntimeError):
@@ -248,6 +263,9 @@ class Grader:
             ).all()
         }
         fixed_on_target: set[str] = set()
+        # Planted-bug problems come from files with doctests, so a fix can be run against
+        # them. Other problems have no runnable tests here (no Docker verifier in v1).
+        planted = (await self.store.meta(pid, version)).source == Source.PLANTED
         for bug in answer.bugs:
             patch = patches.get(bug.file)
             fix = FixResultRow(
@@ -265,6 +283,8 @@ class Grader:
                 )
                 if bug.file.endswith(".py"):
                     fix.syntax_error = python_syntax_error(patch.content)
+                if planted and fix.syntax_error is None:
+                    fix.tests, fix.tests_detail = await run_doctests(bug.file, patch.content)
                 fixed = await judge.score_patch(bug, patch.diff)
                 if fixed is not None:
                     fix.judge_fix, fix.judge_notes = fixed.fix, fixed.notes
