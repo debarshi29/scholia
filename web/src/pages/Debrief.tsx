@@ -160,6 +160,11 @@ function BugRow({ bug }: { bug: DebriefBug }) {
             {bug.fix.judge_fix !== null ? `${bug.fix.judge_fix}/2` : bug.fix.on_target ? "on the bug" : "elsewhere"}
           </Chip>
         )}
+        {bug.fix?.tests && (
+          <Chip tone={bug.fix.tests === "passed" ? "green" : "coral"} mono>
+            tests {bug.fix.tests}
+          </Chip>
+        )}
       </div>
     </li>
   );
@@ -442,6 +447,11 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
                         : "Your change is in the bug's file but not on the bug's lines."}{" "}
                       {b.fix.syntax_error && (
                         <span className="text-coral">Syntax error: {b.fix.syntax_error}. </span>
+                      )}
+                      {b.fix.tests && (
+                        <span className={b.fix.tests === "passed" ? "text-green" : "text-coral"}>
+                          Doctests {b.fix.tests} ({b.fix.tests_detail}).{" "}
+                        </span>
                       )}
                       {b.fix.judge_notes}
                     </p>
