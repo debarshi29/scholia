@@ -211,6 +211,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sessions/{session_id}/findings/{finding_id}/validity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Validity
+         * @description Mark a finding that matched no key bug as a fair point (or take the mark back). It is
+         *     the user's own note after the debrief: matching, scores and stats do not change.
+         */
+        post: operations["mark_validity_api_sessions__session_id__findings__finding_id__validity_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions/{session_id}/debrief": {
         parameters: {
             query?: never;
@@ -432,6 +453,11 @@ export interface components {
             explanation: string;
             /** Fix */
             fix: string;
+            /**
+             * Marked Valid
+             * @default false
+             */
+            marked_valid: boolean;
         };
         /**
          * DebriefFix
@@ -852,6 +878,11 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** ValidityRequest */
+        ValidityRequest: {
+            /** Valid */
+            valid: boolean;
         };
     };
     responses: never;
@@ -1323,6 +1354,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubmitResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_validity_api_sessions__session_id__findings__finding_id__validity_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+                finding_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidityRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DebriefFinding"];
                 };
             };
             /** @description Validation Error */

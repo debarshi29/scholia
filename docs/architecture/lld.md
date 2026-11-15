@@ -211,6 +211,7 @@ erDiagram
         string category
         text explanation
         text fix
+        bool marked_valid
     }
     OUTCOMES {
         int id PK
@@ -300,6 +301,7 @@ Base path `/api`. JSON in and out. Errors use `{"error": {"code": string, "messa
 | `POST /sessions/{id}/submit` | Freeze the report, run grading in the background | Report: `findings[]`, `design_notes`, `patches[]`; `422 invalid_patch`, `422 too_many_findings` |
 | `GET /sessions/{id}/debrief` | Key against findings, scores, audit, diffs | `409 not_submitted`, `grading_pending`, `grading_failed` |
 | `POST /sessions/{id}/regrade` | Grade again | `202` |
+| `POST /sessions/{id}/findings/{finding_id}/validity` | Mark a finding that matched no key bug as a fair point, or undo | After submit, extras only: `409 not_submitted`, `409 not_extra`, `404 finding_not_found`. A personal note: matching, scores and stats do not change |
 
 Refusal reasons (a closed enum): `no_selection`, `invalid_selection`, `question_too_long`, `over_ctx_cap`, `budget_exhausted`, `licence_not_allowed`, `backend_error`.
 
@@ -415,7 +417,9 @@ flowchart LR
     p --> jd[Judge: fix 0-2 vs reference diff]
 ```
 
-A bug whose lines were fixed is counted as *located*, not missed, in the category stats even if no finding was flagged. Running tests on the fix is not built.
+A bug whose lines were fixed is counted as *located*, not missed, in the category stats even if no finding was flagged.
+
+**Doctest verification.** For `planted` problems the grader also runs the submitted file with `python -m doctest -v` through `corpus.doctests.doctest_result` (a scratch directory holding only that file, 20 s timeout, off the event loop with `asyncio.to_thread`). The outcome is stored in `fix_results.tests` (`passed` when at least one doctest ran and none failed, `failed`, or `error` for an import error, a hang or no doctests) with a count in `tests_detail`. A file that fails the syntax check is not run. Other problems leave `tests` null.
 
 ### 7.5 Orchestration order
 

@@ -40,6 +40,7 @@ class DebriefFinding(BaseModel):
     category: BugCategory
     explanation: str
     fix: str
+    marked_valid: bool = False
 
 
 class DebriefFix(BaseModel):
@@ -175,7 +176,39 @@ def _finding(row: FindingRow) -> DebriefFinding:
         category=row.category,
         explanation=row.explanation,
         fix=row.fix,
+        marked_valid=row.marked_valid,
     )
+
+
+class ValidityRequest(BaseModel):
+    valid: bool
+
+
+@router.post("/{session_id}/findings/{finding_id}/validity", response_model=DebriefFinding)
+async def mark_validity(
+    session_id: str, finding_id: int, req: ValidityRequest, db: Db
+) -> DebriefFinding:
+    """Mark a finding that matched no key bug as a fair point (or take the mark back). It is
+    the user's own note after the debrief: matching, scores and stats do not change."""
+    session = await load_session(db, session_id)
+    if session.submitted_at is None:
+        raise ApiError(409, "not_submitted", "Submit the report first")
+    finding = await db.get(FindingRow, finding_id)
+    if finding is None or finding.session_id != session.id:
+        raise ApiError(404, "finding_not_found", f"No finding {finding_id} in this session")
+    outcome = (
+        await db.exec(
+            select(OutcomeRow).where(
+                OutcomeRow.session_id == session.id, OutcomeRow.finding_id == finding_id
+            )
+        )
+    ).first()
+    if outcome is None or outcome.status is not OutcomeStatus.EXTRA:
+        raise ApiError(409, "not_extra", "Only findings outside the answer key can be marked")
+    finding.marked_valid = req.valid
+    db.add(finding)
+    await db.commit()
+    return _finding(finding)
 
 
 @router.get("/{session_id}/debrief", response_model=Debrief)

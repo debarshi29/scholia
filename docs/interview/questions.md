@@ -277,7 +277,7 @@ Companion documents: [HLD](../architecture/hld.md) · [LLD](../architecture/lld.
 
 **F8 🔴 Where could the deterministic matcher be wrong, and what would you do?**
 - A correct finding on a distant line implicated by the same root cause scores as `extra`.
-- Option: accept multiple key lines (secondary spans), or let the user mark a finding valid after review ("not in the answer key" has no mark-valid control yet).
+- Option: accept multiple key lines (secondary spans). Implemented: the user can mark an extra as "a fair point" after the debrief, as a personal note that deliberately does not change matching, scores or stats, so the key stays the only authority.
 
 ---
 
@@ -385,7 +385,8 @@ Companion documents: [HLD](../architecture/hld.md) · [LLD](../architecture/lld.
 - No auth, SQLite single writer, local Ollama capacity, the judge's rate limits, per-process tokenizer memory.
 
 **K2 🟡 How would you add execution-based grading?**
-- A sandbox (container or microVM) running the problem's tests against the user's patch with CPU, memory, time and network limits; store pass/fail and detail in `fix_results.tests`.
+- Already done for algorithm problems: the file's doctests run against the user's patch (scratch directory, timeout, off the event loop) and the result is stored in `fix_results.tests`.
+- For every other problem: a sandbox (container or microVM) running the upstream tests with CPU, memory, time and network limits, because executing arbitrary project tests is a much larger trust decision.
 
 **K3 🟡 How would you support another language?**
 - Language-specific parts: sanitiser (comments, parser), syntax check, Monaco language, prompts, test runner, bug source. The schema and matcher are language-agnostic.

@@ -131,6 +131,9 @@ class FindingRow(SQLModel, table=True):
     category: BugCategory
     explanation: str
     fix: str = ""
+    marked_valid: bool = False
+    """The user's own verdict, after the debrief, that an extra finding is a fair point. It is a
+    note: it never changes matching, scores or stats."""
 
 
 class OutcomeRow(SQLModel, table=True):
@@ -222,6 +225,13 @@ async def init_db(engine: AsyncEngine) -> None:
         await conn.run_sync(SQLModel.metadata.create_all)
         # ``create_all`` never alters a table that exists: add what later versions need.
         columns = {row[1] for row in (await conn.execute(text("PRAGMA table_info(sessions)")))}
+        finding_columns = {
+            row[1] for row in (await conn.execute(text("PRAGMA table_info(findings)")))
+        }
+        if "marked_valid" not in finding_columns:
+            await conn.execute(
+                text("ALTER TABLE findings ADD COLUMN marked_valid BOOLEAN NOT NULL DEFAULT 0")
+            )
         if "profile_id" not in columns:
             await conn.execute(
                 text(

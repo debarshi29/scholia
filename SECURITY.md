@@ -18,6 +18,7 @@ Scholia is a **local, single-user tool**. It is designed to run on your own mach
 - The `X-Profile` header is trusted as sent.
 - Model output is parsed strictly, but source code and reports placed inside judge prompts are untrusted text, so a crafted file could attempt prompt injection against the judge. Matching (found or missed) is deterministic and unaffected; only quality scores could be skewed.
 - The planted-bug corpus build **executes a cloned repository's doctests** with a timeout. Run it only for repositories you would run tests for. Tier 0 builds do not execute repository code.
+- After you submit a fix to a planted-bug (algorithm) problem, grading **runs your edited file's doctests** in a scratch directory with a 20-second timeout. It is your own code on your own machine, but there is no sandbox (no memory, network or filesystem limits), so do not point the API at a network.
 - There is no rate limiting or request-size hardening beyond field limits, because there is one local user.
 
 ## Supported versions

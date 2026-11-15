@@ -160,12 +160,22 @@ function BugRow({ bug }: { bug: DebriefBug }) {
             {bug.fix.judge_fix !== null ? `${bug.fix.judge_fix}/2` : bug.fix.on_target ? "on the bug" : "elsewhere"}
           </Chip>
         )}
+        {bug.fix?.tests && (
+          <Chip tone={bug.fix.tests === "passed" ? "green" : "coral"} mono>
+            tests {bug.fix.tests}
+          </Chip>
+        )}
       </div>
     </li>
   );
 }
 
-function ExtraRow({ f }: { f: DebriefFinding }) {
+function ExtraRow({ f, sessionId }: { f: DebriefFinding; sessionId: string }) {
+  const queryClient = useQueryClient();
+  const mark = useMutation({
+    mutationFn: (valid: boolean) => api.markValidity(sessionId, f.id, valid),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["debrief", sessionId] }),
+  });
   return (
     <li className={ROW}>
       <span className="font-mono text-[12.5px] text-mute">
@@ -176,8 +186,18 @@ function ExtraRow({ f }: { f: DebriefFinding }) {
         <p className="mt-1.5 text-[12.5px] text-mute">
           Not in the answer key. It may still be a fair point; it is not counted as a bug.
         </p>
+        <button
+          type="button"
+          disabled={mark.isPending}
+          onClick={() => mark.mutate(!f.marked_valid)}
+          className="mt-2 min-h-8 text-[12.5px] font-medium text-cyan hover:underline disabled:opacity-50"
+        >
+          {f.marked_valid ? "Undo: not a fair point" : "Mark as a fair point"}
+        </button>
       </div>
-      <Chip dot>Extra</Chip>
+      <Chip tone={f.marked_valid ? "green" : "mute"} dot>
+        {f.marked_valid ? "Fair point" : "Extra"}
+      </Chip>
     </li>
   );
 }
@@ -402,7 +422,7 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
                 <BugRow key={b.id} bug={b} />
               ))}
               {d.extras.map((f) => (
-                <ExtraRow key={f.id} f={f} />
+                <ExtraRow key={f.id} f={f} sessionId={id} />
               ))}
             </ul>
           </Card>
@@ -442,6 +462,11 @@ function Report({ d, id }: { d: DebriefData; id: string }) {
                         : "Your change is in the bug's file but not on the bug's lines."}{" "}
                       {b.fix.syntax_error && (
                         <span className="text-coral">Syntax error: {b.fix.syntax_error}. </span>
+                      )}
+                      {b.fix.tests && (
+                        <span className={b.fix.tests === "passed" ? "text-green" : "text-coral"}>
+                          Doctests {b.fix.tests} ({b.fix.tests_detail}).{" "}
+                        </span>
                       )}
                       {b.fix.judge_notes}
                     </p>

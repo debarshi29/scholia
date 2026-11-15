@@ -6,7 +6,8 @@ import pytest
 
 from api.grader.fix import changed_ranges, python_syntax_error, touches_bug, unified
 from corpus.patch import parse_patch
-from schema import Bug, BugCategory
+from corpus.publish import Draft, publish, register
+from schema import Bug, BugCategory, Source
 from tests.api.conftest import CORE, UTIL, Lab
 
 pytestmark = pytest.mark.anyio
@@ -216,3 +217,83 @@ async def test_regrade_keeps_one_fix_result_per_bug(lab: Lab) -> None:
     assert (await lab.client.post(f"/api/sessions/{sid}/regrade")).status_code == 202
     d = (await lab.client.get(f"/api/sessions/{sid}/debrief")).json()
     assert d["bugs"][0]["fix"]["judge_fix"] == 2 and len(d["patches"]) == 1
+
+
+# ---- running the problem's doctests on a fix (planted problems only) ----
+
+ADDER_FIXED = (
+    "\n".join(f"# padding {i}" for i in range(1, 30))
+    + '''
+
+
+def add(a, b):
+    """
+    >>> add(1, 2)
+    3
+    >>> add(0, 5)
+    5
+    """
+    return a + b
+'''
+)
+ADDER_BUGGY = ADDER_FIXED.replace("return a + b", "return a - b")
+
+
+async def _planted_problem(lab: Lab) -> str:
+    pub = publish(
+        lab.problems,
+        Draft(
+            tier=2,
+            source=Source.PLANTED,
+            upstream_id="algo/adder.py#logic@39",
+            origin_repo="TheAlgorithms/Python",
+            commit="c0ffee" + "0" * 34,
+            licence="MIT",
+            files={"algo/adder.py": ADDER_BUGGY},
+            bugs=[
+                Bug(
+                    id="b1",
+                    file="algo/adder.py",
+                    lines=(39, 39),
+                    category=BugCategory.LOGIC,
+                    mechanism="Subtracts instead of adding.",
+                    fix_diff="--- a/algo/adder.py\n+++ b/algo/adder.py\n",
+                )
+            ],
+        ),
+    )
+    await register(lab.engine, [pub])
+    return pub.meta.problem_id
+
+
+async def _fix_tests(lab: Lab, content: str) -> dict[str, object]:
+    pid = await _planted_problem(lab)
+    lab.judge.replies = [json.dumps({"fix": 2, "notes": "ok"})]
+    sid = (await lab.start(problem_id=pid))["id"]
+    body = {"patches": [{"file": "algo/adder.py", "content": content}]}
+    assert (await lab.client.post(f"/api/sessions/{sid}/submit", json=body)).status_code == 200
+    d = (await lab.client.get(f"/api/sessions/{sid}/debrief")).json()
+    fix: dict[str, object] = d["bugs"][0]["fix"]
+    return fix
+
+
+async def test_a_correct_fix_passes_the_problems_doctests(lab: Lab) -> None:
+    fix = await _fix_tests(lab, ADDER_FIXED)
+    assert fix["tests"] == "passed" and fix["tests_detail"] == "2 passed, 0 failed"
+
+
+async def test_a_wrong_fix_fails_the_problems_doctests(lab: Lab) -> None:
+    fix = await _fix_tests(lab, ADDER_BUGGY.replace("a - b", "a * b"))
+    assert fix["tests"] == "failed" and "failed" in str(fix["tests_detail"])
+
+
+async def test_a_fix_with_a_syntax_error_is_not_run(lab: Lab) -> None:
+    fix = await _fix_tests(lab, ADDER_FIXED.replace("return a + b", "return (a + b"))
+    assert fix["tests"] is None and fix["syntax_error"]
+
+
+async def test_a_fix_that_hangs_is_an_error(lab: Lab, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("corpus.doctests.TIMEOUT_S", 1)
+    hang = ADDER_FIXED.replace("return a + b", "while True:\n        pass")
+    fix = await _fix_tests(lab, hang)
+    assert fix["tests"] == "error"

@@ -3,6 +3,7 @@
 [![ci](https://github.com/debarshi29/scholia/actions/workflows/ci.yml/badge.svg)](https://github.com/debarshi29/scholia/actions/workflows/ci.yml)
 ![python](https://img.shields.io/badge/python-3.12-blue)
 ![node](https://img.shields.io/badge/node-24-green)
+![licence](https://img.shields.io/badge/licence-MIT-lightgrey)
 
 **Practise the interview round where you get an unfamiliar codebase, an AI assistant and an hour.**
 
@@ -26,7 +27,7 @@ The skill being trained is **reading code and verifying what an AI tells you**, 
 - **Real bugs.** Problems come from SWE-bench Lite and BugsInPy fixes, plus deterministic bugs planted in algorithm files that real tests then catch. No model writes the bugs.
 - **A weak assistant on purpose.** Constrained mode runs a small local model (Qwen2.5-Coder via Ollama) that sees only the lines you select, with a token cap and a question budget. Realistic mode gives it the whole file via Gemini.
 - **Deterministic grading.** Whether you found the bug is decided by line overlap, never by a model. A rubric-driven Gemini judge scores only *how well* you explained and fixed it, and audits whether the assistant misled you.
-- **Fix it, don't just find it.** Switch the editor to Fix mode; your edit is checked for location and syntax and judged against the reference fix.
+- **Fix it, don't just find it.** Switch the editor to Fix mode; your edit is checked for location and syntax, judged against the reference fix, and, for algorithm problems, run against the file's own doctests.
 - **Learns your weak spots.** Miss rate per bug category weights the next problem. Local profiles keep several people's progress apart.
 - **Local-first and private.** Your sessions, assistant logs and history stay on your machine. Only open-source problem code ever goes to Gemini, and only for permissive licences.
 - **Light and dark themes**, keyboard-friendly, accessible controls.
@@ -154,10 +155,10 @@ uv run python -m api.grader.agreement check data/agreement.csv
 
 - **No authentication.** It is a local tool bound to localhost. Profiles separate progress; they do not protect it. Do not expose it to a network.
 - **Python only**, one bug per problem, file sizes 150-500 lines (60-500 for algorithm files).
-- **Fixes are judged, not executed.** There is no test runner yet.
+- **Fixes are judged, and only algorithm problems are executed.** A fix to a planted-bug (data-structure and algorithm) problem is also run against that file's doctests. Other problems have no test runner yet.
 - Some SWE-bench instances are really missing features rather than spottable bugs; note their ids while practising.
 - Bug categories are assigned by an LLM and most Tier 0 problems classify as `logic`, so weak-spot bars start lopsided.
 
 ## Licence
 
-No licence has been chosen yet, so all rights are reserved by the owner until one is added. Problem code is derived from open-source projects and stays under each project's own licence, recorded in every problem's `meta.json`.
+Scholia's own source code is released under the [MIT licence](LICENSE). Problem code is derived from open-source projects and stays under each project's own licence, recorded in every problem's `meta.json`.

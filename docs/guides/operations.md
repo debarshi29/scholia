@@ -83,7 +83,7 @@ SELECT id FROM sessions WHERE submitted_at IS NOT NULL AND graded_at IS NULL;
 - **Secrets:** the Gemini key lives only in `.env` (git-ignored) and in process memory as a secret value.
 - **What leaves the machine:** with a key configured, open-source problem code and your report for that problem go to Gemini for judging and Realistic mode, and only for problems whose licence is on the allowlist. The local assistant, your assistant logs and your history never leave the machine. Without a key, nothing is sent.
 - **Answer key:** unreadable by any live-session endpoint; the debrief returns it only after submit.
-- **Corpus build:** Tier 0 builds read git objects and never run repository code. The planted-bug build runs a repository's doctests with a timeout; use it only on repositories you are comfortable running tests for.
+- **Code execution:** Tier 0 builds read git objects and never run repository code. The planted-bug build runs a repository's doctests with a timeout; use it only on repositories you are comfortable running tests for. Grading a fix to a planted-bug problem runs the user's edited file's doctests (20 s timeout, scratch directory, no sandbox).
 - **Reporting a vulnerability:** see [SECURITY.md](../../SECURITY.md).
 
 ## Troubleshooting
