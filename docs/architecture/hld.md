@@ -34,7 +34,7 @@ Scholia trains that skill:
 
 **In scope:** one user (or several local profiles) on one machine; Python source problems; two assistant modes; deterministic grading plus an LLM judge with a fixed rubric; per-category tracking; a React UI.
 
-**Out of scope (by decision):** hosted deployment, authentication, other languages, running candidate code, a Docker verifier, user-generated problems. See [decisions.md](decisions.md) for the reasoning behind each.
+**Out of scope (by decision):** hosted deployment, authentication, other languages, running candidate code during a session, a Docker verifier, user-generated problems. (After submit, a fix to an algorithm problem is run against that file's doctests; see [decisions.md](decisions.md) D21.) See [decisions.md](decisions.md) for the reasoning behind each.
 
 ## 2. Quality attributes
 
@@ -314,7 +314,7 @@ flowchart LR
 
 Possible next steps, none committed:
 
-1. **Verifier.** Run the problem's tests against a candidate fix in a sandbox (Docker) so fixes are scored by execution, not only by the judge.
+1. **Verifier.** Doctests already verify fixes to algorithm problems. Extend this to every problem by running the upstream tests in a sandbox (Docker), so all fixes are scored by execution, not only by the judge.
 2. **More sources.** A GitHub miner for fix commits; more mutation operators; reference design notes so design scoring covers every problem.
 3. **Multi-user.** Real authentication, a server database, per-user keys and quotas. The profile model and `X-Profile` header are the seam, but today they are not a security boundary.
 4. **Spaced repetition.** Re-surface problems in weak categories on a schedule instead of weights alone.

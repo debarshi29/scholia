@@ -101,8 +101,8 @@ Format: *Context* (why a decision was needed), *Decision*, *Alternatives*, *Cons
 ## D16. Fix mode: users can repair the code, not only report it (owner)
 
 - **Decision (owner).** The editor has a Read/Fix switch. Edited files are submitted as `patches`, stored as diffs, checked for location and syntax, and scored by the judge against the reference fix. A bug whose lines were fixed counts as located in the stats.
-- **Alternatives.** Run the problem's tests on the fix (deferred: needs a sandbox).
-- **Consequences.** Fix quality is judged, not executed. Findings use original line numbers, so edits that add or remove lines shift the editor against them; "Reset file" restores the original.
+- **Alternatives.** Run the problem's tests on the fix for every problem (deferred: needs a sandbox; see D21 for the part that is done).
+- **Consequences.** Fix quality is judged by the model, plus doctests for algorithm problems (D21). Findings use original line numbers, so edits that add or remove lines shift the editor against them; "Reset file" restores the original.
 
 ## D17. Planted bugs for DSA/CP problems (owner)
 
@@ -126,3 +126,17 @@ Format: *Context* (why a decision was needed), *Decision*, *Alternatives*, *Cons
 - **Context.** Windows Smart App Control blocks unsigned launchers (`uvicorn.exe`, `mypy.exe`) and sometimes `.venv\Scripts\python.exe`.
 - **Decision.** Run tools as modules, use `scripts/py.cmd` (uv's base interpreter with the venv's packages) when `uv run` is blocked, and rely on CI for mypy. Never change or disable the protection.
 - **Consequences.** Slightly unusual commands on that machine; everything works on other machines with the standard commands.
+
+## D21. Verify fixes to algorithm problems by running their doctests (owner)
+
+- **Context.** Fix mode was judged only by an LLM. Planted-bug problems already have an executable oracle: the file's own doctests, which pass on the clean file and fail on the mutant.
+- **Decision (owner: "finish off whatever is left").** After submit, grading runs the user's edited file against its doctests for `planted` problems and stores `passed`, `failed` or `error` in `fix_results.tests`. The runner is shared with the corpus build (`corpus/doctests.py`): a scratch directory, `python -m doctest`, a 20-second timeout, off the event loop. A syntax error is reported without running.
+- **Alternatives.** A Docker verifier for all problems (M6, still deferred); running nothing (leaves fixes judged only by a model).
+- **Consequences.** A fix to an algorithm problem now has an objective result. It executes the user's own edited code on their own machine without a sandbox, which is acceptable for a single-user local tool and is documented in the security notes. It never runs during a session and never for upstream-bug problems.
+
+## D22. A finding outside the key can be marked "a fair point" (owner)
+
+- **Context.** "Extra" findings are not in the key but may be correct (a second real bug, a fair design point). The debrief had no way to say so.
+- **Decision.** The user can mark an extra as a fair point after the debrief (stored as `findings.marked_valid`, with an in-place column migration). It is a personal note: matching, judge scores and the category stats never change.
+- **Alternatives.** Let a mark change the stats (rejected: the test-verified key must stay the only authority, otherwise the tracker can be gamed); an LLM re-judge of extras (rejected: cost and an invariant-9 risk).
+- **Consequences.** Users can keep an honest record without weakening the grading. Only extras can be marked; a regrade keeps the mark.
