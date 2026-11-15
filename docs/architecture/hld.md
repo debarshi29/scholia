@@ -282,9 +282,10 @@ flowchart LR
 ```
 
 - **Dev:** `pnpm dev` (5173) proxies `/api` to Uvicorn (8000). The proxy target can be changed with `SCHOLIA_API`.
+- **Containers:** `docker compose up` runs the API, the web app (nginx, forwarding `/api`) and Ollama, with named volumes for data, problems and models, published on `127.0.0.1` only. See [setup.md](../guides/setup.md#11-run-with-docker-alternative-to-steps-3-to-7).
 - **Static:** `pnpm build` produces a static bundle in `web/dist`. It can be served by any static server that also forwards `/api`; the API itself does not serve the SPA.
 - **Hardware:** the local model is sized for a 6 GB GPU (Qwen2.5-Coder 3B; 7B is the ceiling). It also runs on CPU, slowly.
-- **CI:** GitHub Actions runs ruff, mypy, pytest, and the web typecheck, lint and build on every push and pull request.
+- **CI:** GitHub Actions runs ruff, mypy, pytest (85% coverage floor), and the web typecheck, lint and build on every push and pull request, plus a dependency-audit job that also runs weekly. Dependabot proposes updates.
 
 ## 9. Cross-cutting concerns
 

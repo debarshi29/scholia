@@ -1,0 +1,51 @@
+# Scholia on one machine:  docker compose up --build   then open http://localhost:8080
+# Everything is published on 127.0.0.1 only: the API has no authentication.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      DB_PATH: /app/data/scholia.db
+      PROBLEMS_DIR: /app/problems
+    volumes:
+      - scholia-data:/app/data
+      - scholia-problems:/app/problems
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-models:/root/.ollama
+    # For an NVIDIA GPU, uncomment (needs the NVIDIA Container Toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  scholia-data:
+  scholia-problems:
+  ollama-models:

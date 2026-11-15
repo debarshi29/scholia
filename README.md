@@ -61,6 +61,8 @@ uv run python -m uvicorn api.main:app --port 8000
 (cd web && pnpm dev)                  # http://localhost:5173
 ```
 
+Prefer containers? `docker compose up --build -d` runs the API, the web app and Ollama together; see [Run with Docker](docs/guides/setup.md#11-run-with-docker-alternative-to-steps-3-to-7).
+
 Data-structure and algorithm problems (planted bugs) are built with an explicit command because it runs a repository's doctests locally; see the [corpus guide](docs/guides/corpus.md#planted-bugs-in-detail).
 
 ## Architecture at a glance
@@ -100,7 +102,7 @@ Ten invariants hold the design together; the most important are: the answer key 
 | AI | Ollama (local Qwen2.5-Coder), Gemini via `google-genai`, Hugging Face tokenizer for exact token counts |
 | Corpus | `httpx`, GitPython, `ast`-based sanitising and mutation |
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS 3, TanStack Query, Zustand, Monaco (bundled locally) |
-| Tooling | uv, pnpm, ruff, mypy (strict on `schema/` and `api/grader/`), pytest, ESLint, GitHub Actions |
+| Tooling | uv, pnpm, ruff, mypy (strict on `schema/` and `api/grader/`), pytest with coverage, ESLint, GitHub Actions (tests, lint, dependency audits), Dependabot, Docker |
 
 ## Repository layout
 
@@ -119,7 +121,7 @@ scripts/   py.cmd: Windows helper when Smart App Control blocks .venv launchers
 ```bash
 uv run ruff check . && uv run ruff format --check .
 uv run python -m mypy schema api/grader
-uv run pytest -q                       # offline; add -m live for real model calls
+uv run pytest -q --cov                 # offline, with an 85% coverage floor; add -m live for real model calls
 cd web && pnpm typecheck && pnpm lint && pnpm build
 cd web && pnpm gen:api                 # after any API change
 ```

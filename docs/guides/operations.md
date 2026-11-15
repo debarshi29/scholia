@@ -41,6 +41,10 @@ The dev web server proxies `/api` to `http://localhost:8000`; set `SCHOLIA_API` 
 
 `GET /api/health` returns `200` when the API is up. The API creates the database on first start, scans `problems/` and rebuilds the problem index.
 
+### Containers
+
+`docker compose up --build -d` runs the API (non-root, health-checked), the web app behind nginx and Ollama, with named volumes for data, problems and models. See [setup.md](setup.md#11-run-with-docker-alternative-to-steps-3-to-7). Ports are published on `127.0.0.1` only. Back up the `scholia-data` and `scholia-problems` volumes (for example `docker run --rm -v scholia-data:/d -v "$PWD":/b alpine tar czf /b/scholia-data.tgz -C /d .`).
+
 ### Serving a production build
 
 `cd web && pnpm build` writes a static site to `web/dist`. Serve it with any static server that also forwards `/api` to the API (a reverse proxy rule). The API does not serve the SPA. Remember the API has no authentication; keep both on localhost.
