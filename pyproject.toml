@@ -24,6 +24,7 @@ dependencies = [
 dev = [
     "mypy>=1.13",
     "pytest>=8.3",
+    "pytest-cov>=7.1.0",
     "ruff>=0.8",
 ]
 
@@ -55,3 +56,12 @@ strict = true
 testpaths = ["tests"]
 addopts = "-m 'not live'"
 markers = ["live: makes real LLM/network calls; skipped by default"]
+
+[tool.coverage.run]
+source = ["schema", "api", "corpus"]
+omit = ["api/openapi.py"]  # a three-line CLI that writes the OpenAPI document
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
