@@ -95,9 +95,16 @@ export function lref(from: number, to: number): string {
   return from === to ? `L${from}` : `L${from}–L${to}`;
 }
 
+/** The short project name shown in titles and lists. The algorithms repo is called "Python",
+ * which says nothing, so it is shown as "algorithms". */
+export function repoLabel(originRepo: string): string {
+  if (originRepo.toLowerCase() === "thealgorithms/python") return "algorithms";
+  return originRepo.split("/").pop() ?? originRepo;
+}
+
 /** A display name for a problem: problems have ids, not titles. `django: deletion`. */
 export function problemTitle(originRepo: string, files: string[]): string {
-  const repo = originRepo.split("/").pop() ?? originRepo;
+  const repo = repoLabel(originRepo);
   const path = files[0] ?? "";
   const stem = baseName(path).replace(/\.py$/, "");
   // A package's __init__.py is better named by its folder.

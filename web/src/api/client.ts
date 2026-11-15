@@ -107,5 +107,7 @@ export const api = {
     request<Profile>("POST", `/api/profiles/${encodeURIComponent(id)}/reset-stats`),
   deleteProfile: (id: string) =>
     request<null>("DELETE", `/api/profiles/${encodeURIComponent(id)}`),
+  markValidity: (id: string, findingId: number, valid: boolean) =>
+    request<DebriefFinding>("POST", `${session(id)}/findings/${findingId}/validity`, { valid }),
   regrade: (id: string) => request<{ status: string }>("POST", `${session(id)}/regrade`),
 };

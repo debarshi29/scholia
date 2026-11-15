@@ -41,6 +41,7 @@ import {
   plural,
   problemTitle,
   rateTone,
+  repoLabel,
   SOURCE_LABEL,
 } from "../lib/format";
 import { Link, navigate } from "../router";
@@ -91,7 +92,7 @@ function Header({ sessions }: { sessions: SessionSummary[] }) {
 // ---- small helpers ----
 
 function repoName(p: ProblemCard): string {
-  return p.origin_repo.split("/").pop() ?? p.origin_repo;
+  return repoLabel(p.origin_repo);
 }
 
 function fileName(p: ProblemCard): string {
