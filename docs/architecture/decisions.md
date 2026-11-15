@@ -140,3 +140,10 @@ Format: *Context* (why a decision was needed), *Decision*, *Alternatives*, *Cons
 - **Decision.** The user can mark an extra as a fair point after the debrief (stored as `findings.marked_valid`, with an in-place column migration). It is a personal note: matching, judge scores and the category stats never change.
 - **Alternatives.** Let a mark change the stats (rejected: the test-verified key must stay the only authority, otherwise the tracker can be gamed); an LLM re-judge of extras (rejected: cost and an invariant-9 risk).
 - **Consequences.** Users can keep an honest record without weakening the grading. Only extras can be marked; a regrade keeps the mark.
+
+## D23. Container packaging and a coverage floor (owner)
+
+- **Context.** "Production grade" for a local tool means anyone can run it reproducibly and regressions are caught.
+- **Decision (owner).** Two images (API on `python:3.12-slim` with locked dependencies and `git`, running as a non-root user with a health check; web built with Node and served by nginx, which forwards `/api`), plus a compose file that adds Ollama with named volumes and publishes only on `127.0.0.1`. CI enforces an 85% coverage floor (`pytest-cov`, a new dev dependency approved by the owner), runs a dependency-audit job also on a weekly schedule, and Dependabot proposes updates.
+- **Alternatives.** A single image serving the SPA from the API (rejected: couples the API to static hosting); publishing on all interfaces (rejected: the API has no authentication).
+- **Consequences.** The images were built and exercised (health check, SPA routing, the nginx proxy and a corpus dry run inside the container). The compose file's Ollama service was validated but its model pull was not exercised. Coverage was 87% when the floor was set at 85%.

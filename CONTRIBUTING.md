@@ -27,7 +27,7 @@ Run these before you push; CI runs the same.
 ```bash
 uv run ruff check . && uv run ruff format --check .
 uv run python -m mypy schema api/grader      # strict
-uv run pytest -q
+uv run pytest -q --cov                       # fails below 85% coverage
 cd web && pnpm typecheck && pnpm lint && pnpm build
 ```
 

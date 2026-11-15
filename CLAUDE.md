@@ -113,7 +113,8 @@ scholia/
   data/                     # sqlite db, logs; git-ignored
   scripts/py.cmd            # runs uv's base interpreter with the venv's packages (Smart App Control)
   docs/                     # HLD, LLD, decision log, guides, interview questions, screenshots (Mermaid diagrams)
-  CONTRIBUTING.md SECURITY.md .github/   # workflow, security policy, PR and issue templates
+  CONTRIBUTING.md SECURITY.md LICENSE .github/   # workflow, security policy, MIT licence, CI, Dependabot, PR and issue templates
+  docker/ docker-compose.yml .dockerignore       # API and web images, compose stack with Ollama (15 Nov 2026)
   tests/
     fixtures/graded/        # hand-graded reports used to test the grader
 ```
@@ -141,8 +142,12 @@ uv run python -m corpus.build --tier 0 --source swebench --limit 20 --dry-run   
 # quality
 uv run ruff check . && uv run ruff format --check .
 uv run python -m mypy schema api/grader
-uv run pytest -q
+uv run pytest -q --cov          # CI enforces an 85% coverage floor
+uv audit && (cd web && pnpm audit --prod)   # dependency advisories (also a weekly CI job)
 cd web && pnpm typecheck && pnpm lint
+
+# containers (optional)
+docker compose up --build -d     # http://localhost:8080; see docs/guides/setup.md
 
 # regenerate the frontend API client after any API change
 cd web && pnpm gen:api

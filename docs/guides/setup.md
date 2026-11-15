@@ -1,6 +1,6 @@
 # Set up Scholia locally
 
-This guide gets you from a clean machine to a working practice session. Everything runs on your computer. The only outside service is Google Gemini, which is needed for two things: building problems (a one-time classification pass) and the optional judge and Realistic assistant.
+This guide gets you from a clean machine to a working practice session, either directly on your machine or with [Docker](#11-run-with-docker-alternative-to-steps-3-to-7). Everything runs on your computer. The only outside service is Google Gemini, which is needed for two things: building problems (a one-time classification pass) and the optional judge and Realistic assistant.
 
 **Time:** about 15 minutes plus model and corpus downloads. **Disk:** roughly 4 GB (the local model is about 2 GB; cloned repositories are cached).
 
@@ -150,7 +150,36 @@ Tests mock every model call. `uv run pytest -q -m live` runs the opt-in tests ag
 | Windows: "An Application Control policy has blocked this file" | Smart App Control blocked an unsigned launcher. Use the module forms shown above, or `scripts\py.cmd <args>`, which runs uv's base interpreter with the project's packages. Do not turn Smart App Control off |
 | `pnpm` not found in Git Bash on Windows | Run `pnpm` from PowerShell |
 
-## 11. Resetting and cleaning up
+## 11. Run with Docker (alternative to steps 3 to 7)
+
+A compose file runs the whole stack in containers: the API, the web app behind nginx, and Ollama.
+
+```bash
+cp .env.example .env                       # set GEMINI_API_KEY and GEMINI_MODEL
+docker compose up --build -d
+docker compose exec ollama ollama pull qwen2.5-coder:3b   # once; stored in a volume
+```
+
+Open **http://localhost:8080**. Everything is published on `127.0.0.1` only (web 8080, API 8000), because the API has no authentication.
+
+Build problems inside the API container (the volumes keep them between runs):
+
+```bash
+docker compose exec api python -m corpus.build --tier 0 --source swebench --limit 15
+docker compose exec api python -m corpus.build --tier 0 --source bugsinpy --limit 15
+docker compose exec api python -m corpus.build --tier 2 --source planted --limit 10   # runs doctests, see the corpus guide
+docker compose restart api                 # re-index (not needed after the first build)
+```
+
+Notes:
+
+- **Data** lives in three named volumes: `scholia-data` (database, logs, caches, tokenizer), `scholia-problems` (published problems) and `ollama-models`. `docker compose down` keeps them; `docker compose down -v` deletes them.
+- **GPU:** for an NVIDIA GPU, uncomment the `deploy` block under `ollama` in `docker-compose.yml` (needs the NVIDIA Container Toolkit). Without it the local model runs on CPU.
+- **Configuration** comes from `.env`; compose sets `OLLAMA_BASE_URL`, `DB_PATH` and `PROBLEMS_DIR` for the container paths.
+- The API image runs as a non-root user and has a health check on `/api/health`. The web image is a static bundle served by nginx, which forwards `/api` to the API with a 300-second read timeout.
+- To use an Ollama already running on your machine instead of the container, remove the `ollama` service and set `OLLAMA_BASE_URL=http://host.docker.internal:11434/v1` for `api`.
+
+## 12. Resetting and cleaning up
 
 - **Forget your progress:** Profiles page, **Reset stats** (keeps sessions) or **Delete** (removes the profile and its sessions).
 - **Start completely fresh:** stop the API, delete `data/scholia.db`. Problems in `problems/` are kept and re-indexed on the next start.
