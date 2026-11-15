@@ -180,10 +180,20 @@ def _clone(root: Path) -> tuple[Path, str]:
 class PlantedBugs:
     source = Source.PLANTED
 
-    def __init__(self, root: Path, *, wanted: int, seed: int = 20261114) -> None:
+    def __init__(
+        self,
+        root: Path,
+        *,
+        wanted: int,
+        seed: int = 20261114,
+        done: frozenset[str] = frozenset(),
+    ) -> None:
         self.root = root
         self.wanted = wanted
         self.seed = seed
+        self.done = done
+        """Files that already have a published problem. They are skipped before any doctest runs,
+        so a re-run moves on to new files instead of re-finding the same ones."""
 
     def _files(self, work: Path) -> list[str]:
         found: list[str] = []
@@ -202,6 +212,8 @@ class PlantedBugs:
         for rel in self._files(work):
             if yielded >= self.wanted:
                 return
+            if rel in self.done:
+                continue
             clean = (work / rel).read_text(encoding="utf-8", errors="replace")
             if not MIN_LINES <= line_count(clean) <= 500:
                 continue

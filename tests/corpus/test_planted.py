@@ -4,11 +4,13 @@ import ast
 from pathlib import Path
 from typing import cast
 
-from corpus.build import BuildLog, run
+import pytest
+
+from corpus.build import BuildLog, published_planted_files, run
 from corpus.patch import parse_patch
 from corpus.repos import LicenceResolver, RepoCache
 from corpus.sources.base import Candidate
-from corpus.sources.planted import MIN_LINES, doctest_result, fix_patch, mutations
+from corpus.sources.planted import MIN_LINES, PlantedBugs, doctest_result, fix_patch, mutations
 from schema import Source
 from tests.corpus.test_build import FakeClassifier, FakeLicences, FakeRepos
 
@@ -121,3 +123,61 @@ def test_short_files_are_dropped_unless_the_source_lowers_the_minimum(tmp_path: 
     )
     assert [d["reason"] for d in log.dropped] == ["too_short"]
     assert MIN_LINES < 150
+
+
+# ---- resuming a build ----
+
+ALGO = (
+    '"""Tiny module with doctests."""\n\n\n'
+    + "\n".join(f"# padding line {i}" for i in range(1, 50))
+    + '''
+
+
+def add(a, b):
+    """
+    >>> add(1, 2)
+    3
+    >>> add(0, 0)
+    0
+    >>> add(5, 5)
+    10
+    """
+    return a + b
+'''
+)
+
+
+def _fake_clone(tmp_path: Path):
+    work = tmp_path / "work"
+    (work / "maths").mkdir(parents=True)
+    (work / "maths" / "adder.py").write_text(ALGO, encoding="utf-8")
+
+    def clone(_root: Path) -> tuple[Path, str]:
+        return work, "c0ffee"
+
+    return clone
+
+
+def test_candidates_skip_files_that_already_have_a_problem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("corpus.sources.planted._clone", _fake_clone(tmp_path))
+    fresh = list(PlantedBugs(tmp_path, wanted=5).candidates())
+    assert [c.upstream_id.split("#")[0] for c in fresh] == ["maths/adder.py"]
+    resumed = list(PlantedBugs(tmp_path, wanted=5, done=frozenset({"maths/adder.py"})).candidates())
+    assert resumed == []
+
+
+def test_published_planted_files_come_from_the_published_problems(tmp_path: Path) -> None:
+    buggy = SRC.replace("return a + b", "return a - b")
+    problems = tmp_path / "problems"
+    run(
+        [_planted("algo/m.py", buggy, SRC)],
+        build_log=BuildLog(source="planted", tier=2, limit=5, dry_run=False),
+        problems_dir=problems,
+        repos=cast(RepoCache, FakeRepos({})),
+        licences=cast(LicenceResolver, FakeLicences({"thealgorithms/python": "MIT"})),
+        classifier=FakeClassifier(),
+    )
+    assert published_planted_files(problems) == frozenset({"algo/m.py"})
+    assert published_planted_files(tmp_path / "nothing") == frozenset()

@@ -31,6 +31,15 @@ uv run pytest -q
 cd web && pnpm typecheck && pnpm lint && pnpm build
 ```
 
+Dependency audits (run them before a release and after adding a dependency):
+
+```bash
+uv audit                              # Python packages
+cd web && pnpm audit --prod           # web packages
+```
+
+A transitive advisory is fixed with an override in `web/pnpm-workspace.yaml` (pnpm 12 reads overrides from there, not from `package.json`). Currently `dompurify` is pinned to `>=3.4.17`, because Monaco pulls it in.
+
 If you change the API's request or response models, regenerate the web client:
 
 ```bash
