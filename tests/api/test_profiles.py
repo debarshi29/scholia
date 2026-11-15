@@ -161,6 +161,12 @@ async def test_existing_database_is_migrated_to_the_default_profile(tmp_path: Pa
             )
             await conn.execute(
                 text(
+                    "CREATE TABLE findings (id INTEGER PRIMARY KEY, session_id TEXT, file TEXT, "
+                    "line_from INTEGER, line_to INTEGER, category TEXT, explanation TEXT, fix TEXT)"
+                )
+            )
+            await conn.execute(
+                text(
                     "CREATE TABLE category_stats (category TEXT PRIMARY KEY, attempts INTEGER, "
                     "misses INTEGER, updated_at DATETIME)"
                 )
@@ -177,6 +183,9 @@ async def test_existing_database_is_migrated_to_the_default_profile(tmp_path: Pa
                     text("SELECT profile_id, category, attempts, misses FROM profile_stats")
                 )
             ).all()
+        async with engine.connect() as conn:
+            columns = {r[1] for r in await conn.execute(text("PRAGMA table_info(findings)"))}
+        assert "marked_valid" in columns  # added to an existing findings table
         assert profile == "default"
         assert [tuple(r) for r in stats] == [("default", "BOUNDARY", 3, 2)]
     finally:
