@@ -3,6 +3,7 @@
 [![ci](https://github.com/debarshi29/scholia/actions/workflows/ci.yml/badge.svg)](https://github.com/debarshi29/scholia/actions/workflows/ci.yml)
 ![python](https://img.shields.io/badge/python-3.12-blue)
 ![node](https://img.shields.io/badge/node-24-green)
+![licence](https://img.shields.io/badge/licence-MIT-lightgrey)
 
 **Practise the interview round where you get an unfamiliar codebase, an AI assistant and an hour.**
 
@@ -160,4 +161,4 @@ uv run python -m api.grader.agreement check data/agreement.csv
 
 ## Licence
 
-No licence has been chosen yet, so all rights are reserved by the owner until one is added. Problem code is derived from open-source projects and stays under each project's own licence, recorded in every problem's `meta.json`.
+Scholia's own source code is released under the [MIT licence](LICENSE). Problem code is derived from open-source projects and stays under each project's own licence, recorded in every problem's `meta.json`.
