@@ -17,7 +17,7 @@ dependencies = [
     "sqlmodel>=0.0.22",
     "tenacity>=9.0",
     "tokenizers>=0.20",
-    "uvicorn[standard]>=0.32",
+    "uvicorn[standard]>=0.54.0",
 ]
 
 [dependency-groups]
