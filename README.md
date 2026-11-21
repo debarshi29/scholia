@@ -5,11 +5,11 @@
 ![node](https://img.shields.io/badge/node-24-green)
 ![licence](https://img.shields.io/badge/licence-MIT-lightgrey)
 
-**Practise the interview round where you get an unfamiliar codebase, an AI assistant and an hour.**
+**Practice the interview round where you get an unfamiliar codebase, an AI assistant and an hour.**
 
-Scholia is a single-user, local-first platform for AI-assisted code-comprehension practice. You are handed a real file you have not seen, with a bug a project's maintainers once fixed. You read it, ask a *deliberately weak* assistant about the lines you select, flag the bug and explain it (or fix it), and submit. Then you get a graded debrief against an answer key built from the real upstream fix.
+Scholia is a local-first practice platform for AI-assisted code-comprehension interviews. You are handed a real source file you have not seen, containing a bug that a project's maintainers once fixed. You read it, ask a deliberately limited assistant about the lines you select, flag the bug and explain it (or fix it), and submit. You then get a graded debrief against an answer key built from the real fix.
 
-The skill being trained is **reading code and verifying what an AI tells you**, not typing speed.
+The skill it trains is **reading unfamiliar code and verifying what an AI tells you**, not typing speed.
 
 <table>
 <tr>
@@ -17,55 +17,53 @@ The skill being trained is **reading code and verifying what an AI tells you**, 
 <td><img src="docs/assets/sess-dark.png" alt="Session in dark mode"></td>
 </tr>
 <tr>
-<td align="center"><sub>Library: pick a problem, grouped by bug category (light)</sub></td>
-<td align="center"><sub>Session: code, assistant and report (dark)</sub></td>
+<td align="center"><sub>Library: pick a problem, grouped by bug category</sub></td>
+<td align="center"><sub>Session: code, assistant and report</sub></td>
 </tr>
 </table>
 
-## Highlights
+## Features
 
-- **Real bugs.** Problems come from SWE-bench Lite and BugsInPy fixes, plus deterministic bugs planted in algorithm files that real tests then catch. No model writes the bugs.
-- **A weak assistant on purpose.** Constrained mode runs a small local model (Qwen2.5-Coder via Ollama) that sees only the lines you select, with a token cap and a question budget. Realistic mode gives it the whole file via Gemini.
-- **Deterministic grading.** Whether you found the bug is decided by line overlap, never by a model. A rubric-driven Gemini judge scores only *how well* you explained and fixed it, and audits whether the assistant misled you.
-- **Fix it, don't just find it.** Switch the editor to Fix mode; your edit is checked for location and syntax, judged against the reference fix, and, for algorithm problems, run against the file's own doctests.
-- **Learns your weak spots.** Miss rate per bug category weights the next problem. Local profiles keep several people's progress apart.
-- **Local-first and private.** Your sessions, assistant logs and history stay on your machine. Only open-source problem code ever goes to Gemini, and only for permissive licences.
-- **Light and dark themes**, keyboard-friendly, accessible controls.
+- **Real bugs.** Problems come from SWE-bench Lite and BugsInPy fixes in projects such as scikit-learn, Keras, sympy and pandas, plus data-structure and algorithm problems with bugs planted deterministically and caught by real tests.
+- **A deliberately limited assistant.** In Constrained mode a small local model (Qwen2.5-Coder through Ollama) sees only the lines you select, within a token cap and a question budget. Realistic mode gives a stronger model (Gemini) the whole file.
+- **Objective grading.** Whether you found the bug is decided by line overlap, never by a model. A rubric-driven judge scores how well you explained and fixed it, and audits whether the assistant misled you.
+- **Fix it, not just find it.** Switch the editor to Fix mode. Your change is checked for location and syntax, judged against the reference fix, and, for algorithm problems, run against the file's own tests.
+- **Targets your weak spots.** Miss rate per bug category decides which problem you get next. Local profiles keep several people's progress separate.
+- **Private by default.** Sessions, assistant logs and history stay on your machine. Only open-source problem code is ever sent to a cloud model, and only for permissive licences.
+- **Light and dark themes**, keyboard-friendly and accessible.
 
 ## How a session works
 
-1. **Pick** a problem, or let the picker choose by your weak spots.
-2. **Read.** Click two line numbers to select a range; the context bar shows its token cost.
-3. **Ask** the assistant. Refusals (no selection, over the cap, out of questions) cost nothing.
-4. **Flag** the lines you think are wrong and write why, and what the fix is. Optionally edit the code in Fix mode.
-5. **Submit.** The server owns the clock; a late submit is accepted and marked overtime.
-6. **Debrief.** Your findings against the key, judge scores, an audit of the assistant's claims, your diff, and the upstream fix.
+1. **Pick** a problem, or let Scholia choose one based on your weak spots.
+2. **Read** the code. Click two line numbers to select a range; the context bar shows its cost.
+3. **Ask** the assistant about the selection. Refused questions cost nothing.
+4. **Flag** the lines you think are wrong, explain why, and say how to fix it. Optionally edit the code in Fix mode.
+5. **Submit.** The server keeps the clock; a late submission is accepted and marked overtime.
+6. **Debrief.** See your findings against the answer key, the judge's scores, an audit of what the assistant told you, your diff and the upstream fix.
 
 ## Quick start
 
-Full instructions, prerequisites and troubleshooting: **[docs/guides/setup.md](docs/guides/setup.md)**.
+You need Python 3.12, Node 24, [uv](https://docs.astral.sh/uv/), [pnpm](https://pnpm.io), [Ollama](https://ollama.com) and a free [Gemini API key](https://aistudio.google.com/apikey). Full instructions and troubleshooting are in the **[setup guide](docs/guides/setup.md)**.
 
 ```bash
 git clone https://github.com/debarshi29/scholia.git && cd scholia
-uv sync --locked                      # Python deps (Python 3.12)
+uv sync --locked
 (cd web && pnpm install --frozen-lockfile)
 ollama pull qwen2.5-coder:3b          # the local assistant
-cp .env.example .env                  # set GEMINI_API_KEY and GEMINI_MODEL
+cp .env.example .env                  # then set GEMINI_API_KEY and GEMINI_MODEL
 
-# build some problems (a free Gemini key is enough)
+# build a problem library
 uv run python -m corpus.build --tier 0 --source swebench --limit 15
 uv run python -m corpus.build --tier 0 --source bugsinpy --limit 15
 
-# run: two terminals
+# run (two terminals)
 uv run python -m uvicorn api.main:app --port 8000
-(cd web && pnpm dev)                  # http://localhost:5173
+(cd web && pnpm dev)                  # open http://localhost:5173
 ```
 
-Prefer containers? `docker compose up --build -d` runs the API, the web app and Ollama together; see [Run with Docker](docs/guides/setup.md#11-run-with-docker-alternative-to-steps-3-to-7).
+Prefer containers? `docker compose up --build -d` runs the API, the web app and Ollama together; see [Run with Docker](docs/guides/setup.md#11-run-with-docker-alternative-to-steps-3-to-7). Data-structure and algorithm problems are built with a separate command; see the [corpus guide](docs/guides/corpus.md#planted-bugs-in-detail).
 
-Data-structure and algorithm problems (planted bugs) are built with an explicit command because it runs a repository's doctests locally; see the [corpus guide](docs/guides/corpus.md#planted-bugs-in-detail).
-
-## Architecture at a glance
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -73,94 +71,56 @@ flowchart LR
     spa -->|/api| api[FastAPI]
     api --> db[(SQLite)]
     api --> files[(problems/<br/>immutable, versioned)]
-    api --> ollama[Ollama<br/>local weak assistant]
-    api -.->|open-source code only| gemini[[Gemini<br/>judge + Realistic]]
+    api --> ollama[Ollama<br/>local assistant]
+    api -.->|open-source code only| gemini[[Gemini<br/>judge and Realistic mode]]
 ```
 
-Ten invariants hold the design together; the most important are: the answer key never reaches the client before submit; the assistant proxy is the only path to a model; matching is deterministic and the LLM only scores; problems are immutable; only open-source code goes to Gemini. They are listed in [`CLAUDE.md`](CLAUDE.md#5-core-invariants-never-break-these), and each has a test.
+A few principles shape the design: the answer key is never sent to the browser before you submit; every assistant call goes through one proxy that enforces the limits; matching is deterministic and the model only scores; published problems never change; and only open-source code is sent to a cloud model. Each is covered by tests. The [high-level design](docs/architecture/hld.md) and [low-level design](docs/architecture/lld.md) describe them in detail, with diagrams.
 
 ## Documentation
 
-| Document | What it covers |
+| Document | Contents |
 |---|---|
-| [docs/guides/setup.md](docs/guides/setup.md) | Install, configure, build problems, run, first session, troubleshooting |
-| [docs/architecture/hld.md](docs/architecture/hld.md) | High-level design: context, containers, flows, trust boundaries, deployment, risks |
-| [docs/architecture/lld.md](docs/architecture/lld.md) | Low-level design: modules, data model, API, algorithms, corpus pipeline, frontend |
-| [docs/architecture/decisions.md](docs/architecture/decisions.md) | Decision log with alternatives and consequences |
-| [docs/guides/corpus.md](docs/guides/corpus.md) | How problems are made and how to add a source |
-| [docs/guides/operations.md](docs/guides/operations.md) | Configuration reference, logs, backups, security notes |
-| [docs/interview/questions.md](docs/interview/questions.md) | Interview questions about this project, with answer outlines |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow, conventions, quality gates |
-| [SECURITY.md](SECURITY.md) | Threat model summary and how to report issues |
-| [`CLAUDE.md`](CLAUDE.md) | The living specification: scope, invariants, contracts, owner decisions |
+| [Setup guide](docs/guides/setup.md) | Install, configure, build problems, run locally or with Docker, first session, troubleshooting |
+| [High-level design](docs/architecture/hld.md) | Context, components, flows, trust boundaries, deployment |
+| [Low-level design](docs/architecture/lld.md) | Modules, data model, API, algorithms, corpus pipeline, frontend |
+| [Decision log](docs/architecture/decisions.md) | Key decisions with alternatives and consequences |
+| [Corpus guide](docs/guides/corpus.md) | How problems are made, and how to add a source |
+| [Operations guide](docs/guides/operations.md) | Configuration reference, logs, backups, security notes |
+| [Contributing](CONTRIBUTING.md) | Workflow, conventions and quality checks |
+| [Security](SECURITY.md) | Security model and how to report an issue |
 
-## Tech stack
+## Technology
 
 | Layer | Choice |
 |---|---|
-| Backend | Python 3.12, FastAPI, Pydantic v2, SQLModel on async SQLAlchemy and aiosqlite |
-| AI | Ollama (local Qwen2.5-Coder), Gemini via `google-genai`, Hugging Face tokenizer for exact token counts |
-| Corpus | `httpx`, GitPython, `ast`-based sanitising and mutation |
-| Frontend | React 19, Vite, TypeScript, Tailwind CSS 3, TanStack Query, Zustand, Monaco (bundled locally) |
-| Tooling | uv, pnpm, ruff, mypy (strict on `schema/` and `api/grader/`), pytest with coverage, ESLint, GitHub Actions (tests, lint, dependency audits), Dependabot, Docker |
+| Backend | Python 3.12, FastAPI, Pydantic v2, SQLModel on async SQLAlchemy |
+| AI | Ollama (local Qwen2.5-Coder), Gemini, Hugging Face tokenizer for exact token counts |
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS, TanStack Query, Zustand, Monaco |
+| Quality | pytest with an 85% coverage floor, ruff, mypy, ESLint, GitHub Actions, weekly dependency audits |
+| Packaging | uv, pnpm, Docker and Docker Compose |
 
-## Repository layout
+## Scope and security
 
-```
-schema/    shared types: the single source of truth
-corpus/    offline pipeline that builds problems (sources, filters, sanitise, classify, publish)
-api/       FastAPI app: sessions, assistant proxy, grader, debrief, profiles
-web/       React app
-tests/     pytest suite (about 360 tests; every invariant has one)
-docs/      architecture, guides, interview questions, screenshots
-scripts/   py.cmd: Windows helper when Smart App Control blocks .venv launchers
-```
+Scholia is built for one person practising on their own machine.
+
+- It has **no authentication** and listens on localhost. Profiles keep progress separate but do not protect it, so do not expose it to a network.
+- Problems are Python source files of 60 to 500 lines, each with one bug.
+- Fixes are judged by a model; fixes to algorithm problems are also run against that file's tests.
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Development
 
 ```bash
 uv run ruff check . && uv run ruff format --check .
 uv run python -m mypy schema api/grader
-uv run pytest -q --cov                 # offline, with an 85% coverage floor; add -m live for real model calls
+uv run pytest -q --cov
 cd web && pnpm typecheck && pnpm lint && pnpm build
-cd web && pnpm gen:api                 # after any API change
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). On Windows machines with Smart App Control, see [Windows notes](docs/guides/setup.md#10-troubleshooting).
-
-## Dogfooding and judge agreement
-
-Scholia measures whether its judge agrees with you.
-
-```bash
-uv run python -m api.grader.agreement export data/agreement.csv   # one row per matched finding
-# fill in hand_mechanism (0-2) and hand_fix (0-2), then:
-uv run python -m api.grader.agreement check data/agreement.csv
-```
-
-`check` prints how often the judge equals your scores and lists every disagreement. If agreement is poor, change the rubric in `api/grader/prompts/` (bump its version header) and use **Grade again** on the debrief.
-
-## Status
-
-| Milestone | State |
-|---|---|
-| M0 skeleton, schema, config, DB, tooling | done |
-| M1 Tier 0 corpus importer (SWE-bench Lite, BugsInPy) | done |
-| M2 Session API, Library and Session pages | done |
-| M3 Assistant proxy, Ollama and Gemini backends | done |
-| M4 Grader, tracker, Debrief | done |
-| Additions requested by the owner: category grouping, topics, fix mode, planted-bug (DSA/CP) source, local profiles, light and dark themes | done |
-| M5 dogfood gate (5-10 real sessions, hand-graded judge agreement) | yours to run |
-| M6 and later: sandboxed test execution, GitHub miner, more languages | not started |
-
-## Limitations
-
-- **No authentication.** It is a local tool bound to localhost. Profiles separate progress; they do not protect it. Do not expose it to a network.
-- **Python only**, one bug per problem, file sizes 150-500 lines (60-500 for algorithm files).
-- **Fixes are judged, and only algorithm problems are executed.** A fix to a planted-bug (data-structure and algorithm) problem is also run against that file's doctests. Other problems have no test runner yet.
-- Some SWE-bench instances are really missing features rather than spottable bugs; note their ids while practising.
-- Bug categories are assigned by an LLM and most Tier 0 problems classify as `logic`, so weak-spot bars start lopsided.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
 
 ## Licence
 
-Scholia's own source code is released under the [MIT licence](LICENSE). Problem code is derived from open-source projects and stays under each project's own licence, recorded in every problem's `meta.json`.
+Scholia's source code is released under the [MIT licence](LICENSE). Problem code is derived from open-source projects and stays under each project's own licence, recorded in every problem's `meta.json`.
